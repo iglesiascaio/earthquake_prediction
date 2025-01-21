@@ -1,0 +1,12 @@
+download_config:
+  start_time: "2020-01-01"
+  end_time: "2025-01-01"
+  min_magnitude: 1.0
+  max_magnitude: 9.0
+  network: "CI"
+  station: "PAS"
+
+  data_paths:
+    raw_data: "../../../data/raw"
+
+  output_file_name: "earthquake_data.parquet"
