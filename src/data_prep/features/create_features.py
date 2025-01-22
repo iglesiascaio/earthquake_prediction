@@ -83,10 +83,13 @@ def magnitude_to_class(mag, bin_edges):
 
 def main():
     # 1. Load config
-    config_file = "10-features-config.yaml"
+    config_file = "../../../config/10-features-config.yaml"
     with open(config_file, "r", encoding="utf-8") as f:
-        config = yaml.safe_load(f)
+        config = yaml.safe_load(f)["features_config"]
 
+    import ipdb
+
+    ipdb.set_trace()
     input_data_path = config["input_data_path"]
     output_data_path = config["output_data_path"]
 
