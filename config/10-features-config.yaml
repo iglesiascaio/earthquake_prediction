@@ -1,9 +1,9 @@
 features_config:
   # Path to the raw data (downloaded in the previous step).
-  input_data_path: "data/raw/earthquake_data.parquet"
+  input_data_path: "../../../data/raw/earthquake_data.parquet"
 
   # Where to save the feature table
-  output_data_path: "data/features/earthquake_features.parquet"
+  output_data_path: "../../../data/features/earthquake_features.parquet"
 
   # Feature engineering parameters
   feature_params:
