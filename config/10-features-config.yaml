@@ -7,20 +7,23 @@ features_config:
 
   # Feature engineering parameters
   feature_params:
-    rolling_depth_window: 5        # e.g., rolling window of 5 events for depth mean
-    b_value_window: 50             # # of events to consider when computing b-value
-    rolling_count_window: "30d"    # rolling time window for counting events
-    rolling_mag_stats_window: "7d" # rolling time window for max magnitude, etc.
+    rolling_depth_window: 5        # Rolling window of 5 events for depth mean
+    b_value_window: 50             # Number of events to consider when computing b-value
+    rolling_count_window: "30d"    # Rolling time window for counting events
+    rolling_mag_stats_window: "7d" # Rolling time window for max magnitude, etc.
+    station_proximity_km: 50       # Distance threshold (km) for filtering earthquakes near the station
 
-  # ETAS parameters (placeholder - adapt for real ETAS computations)
+  # ETAS parameters (based on seismological models)
   etas_params:
-    alpha: 1.0
-    c: 0.01
-    p: 1.1
+    mu: 0.01                       # Background seismicity rate
+    K: 0.005                       # Productivity scaling constant
+    alpha: 1.1                     # Magnitude-dependent factor
+    M0: 2.0                        # Reference magnitude threshold
+    c: 0.01                        # Time shift parameter to avoid singularities
+    p: 1.1                         # Temporal decay parameter
+    sigma: 10.0                    # Spatial decay factor (km)
 
-  # Target creation params
+  # Target creation parameters
   target_params:
-    next_days_for_target: 30        # look-ahead window (days) for max magnitude
-    # define magnitude bins if you want a multi-class approach
-    magnitude_bin_edges: [2, 4, 6, 8, 10]
-
+    next_days_for_target: 30        # Look-ahead window (days) for max magnitude prediction
+    magnitude_bin_edges: [2, 4, 6, 8, 10] # Define magnitude bins for multi-class classification
