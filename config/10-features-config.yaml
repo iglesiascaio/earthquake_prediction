@@ -26,4 +26,4 @@ features_config:
   # Target creation parameters
   target_params:
     next_days_for_target: 30        # Look-ahead window (days) for max magnitude prediction
-    magnitude_bin_edges: [2, 4, 6, 8, 10] # Define magnitude bins for multi-class classification
+    magnitude_bin_edges: [1, 2, 3, 4, 5, 6, 7, 8, 9] # Define magnitude bins for multi-class classification
