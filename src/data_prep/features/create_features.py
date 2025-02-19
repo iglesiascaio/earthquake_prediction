@@ -4,23 +4,26 @@
 """
 create_features.py
 
-Reads earthquake data (Parquet) and config parameters from `10-features-config.yaml`,
-computes a variety of features:
-  - Magnitude conversion (to ML) using SCEDC (2024) formulas
-  - Distance-based filtering (within 50 km of station)
-  - Rolling features (b-value, rolling mean depth, etc.)
-  - Vectorized ETAS intensity feature (Ogata, 1988; Zhuang et al., 2004)
-  - Creates a target variable "Max earthquake magnitude in the next N days"
-    (optionally converted to multi-class)
-Organized into modular functions to follow best practices.
+1) Read earthquake (event-based) data from Parquet.
+2) Convert to a daily DataFrame:
+   - Each row = one calendar day (whether or not a quake happened).
+   - Aggregates (list of magnitudes, daily max, daily count, etc.).
+3) Compute all features on the daily DataFrame:
+   - Rolling b-value in a time-based window (e.g., last 30 days).
+   - "Time since last earthquake" (days).
+   - "Time since last earthquake in each magnitude class" (one column per class).
+   - Other typical time series features (rolling sums, means, diffs).
+4) Create target variable: "max magnitude over the next N days."
+5) Save final daily DataFrame to Parquet for ML usage.
 """
 
 import os
 import yaml
 import numpy as np
 import pandas as pd
+from typing import Dict, List, Optional
 from haversine import haversine, Unit
-from typing import Dict
+import re
 
 
 # -------------------------------------------------------------------
@@ -30,72 +33,64 @@ from typing import Dict
 
 def convert_magnitude(row: pd.Series) -> float:
     """
-    Convert different magnitude types to Local Magnitude (ML) using known formulas from SCEDC:
-      - Mw  -> ML = (Mw  - 0.40125) / 0.853
-      - Mlr -> ML = (Mlr - 0.40125) / 0.853
-    (SCEDC, 2024)
+    Convert various magnitude types to Local Magnitude (ML) using known formulas.
 
-    If magnitude_type is Ml, return original magnitude.
-    Otherwise, return NaN if unknown type.
+    - Mlr -> ML = (Mlr - 0.40125) / 0.853
+    - Mw  -> Retain as is (conversion requires region-specific formula)
+    - Mh, Mb, Mun -> Conversion not available; return value of magnitude.
+    - Obs: main earthquakes are typically reported in Mu, but we can find easily that it seems to be equivalent to Mw.
+
+    Parameters:
+    row (pd.Series): A pandas Series containing 'magnitude_type' and 'magnitude'.
+
+    Returns:
+    float: Converted magnitude in ML scale or NaN if conversion isn't possible.
     """
-    if row["magnitude_type"] == "Ml":
-        return row["magnitude"]
-    elif row["magnitude_type"] == "Mw":
-        return (row["magnitude"] - 0.40125) / 0.853
-    elif row["magnitude_type"] == "Mlr":
-        return (row["magnitude"] - 0.40125) / 0.853
+    mtype = row["magnitude_type"]
+    mag = row["magnitude"]
+
+    if mtype == "Ml":
+        return mag
+    elif mtype == "Mlr":
+        return (mag - 0.40125) / 0.853
     else:
-        return np.nan
+        return mag
 
 
-def compute_b_value(magnitudes: np.ndarray) -> float:
-    """
-    Compute Gutenberg-Richter b-value using maximum likelihood estimation.
-    Source: Aki (1965), Gutenberg & Richter (1954)
-
-    b = log10(e) / (mean(M) - Mmin + 1e-6)
-    """
-    if len(magnitudes) < 2:
-        return np.nan
-    m_min = np.min(magnitudes)
-    m_mean = np.mean(magnitudes)
-    return np.log10(np.e) / (m_mean - m_min + 1e-6)
-
-
-def magnitude_to_class(mag: float, bin_edges: list) -> float:
+def magnitude_to_class(mag: float, bin_edges: list) -> Optional[int]:
     """
     Convert a single magnitude to a discrete class index based on bin_edges.
-
-    Example:
-        bin_edges = [2, 4, 6, 8]
-        Classes:
-          mag < 2 => class 0
-          2 <= mag < 4 => class 1
-          4 <= mag < 6 => class 2
-          6 <= mag < 8 => class 3
-          mag >= 8 => class 4
+    Returns an integer class, or NaN if mag is NaN.
     """
     if pd.isna(mag):
         return np.nan
     return np.digitize([mag], bin_edges)[0]
 
 
-# -------------------------------------------------------------------
-# 2. FEATURE-BUILDING FUNCTIONS
-# -------------------------------------------------------------------
-
-
-def filter_distance_to_station(
-    df: pd.DataFrame, max_distance_km: float
-) -> pd.DataFrame:
+def compute_b_value(magnitudes: List[float]) -> float:
     """
-    Filter earthquakes by distance (km) to a station.
-
-    Expects columns:
-      'latitude', 'longitude'
-      'station_latitude', 'station_longitude'
-    Returns only those rows within `max_distance_km`.
+    Compute Gutenberg-Richter b-value using maximum likelihood:
+      b = ln(10) / [mean(M) - min(M)]  (plus a tiny offset to avoid /0)
+    Expects 'magnitudes' to be a list of floats.
     """
+    if len(magnitudes) < 2:
+        return np.nan
+    mags = np.array(magnitudes, dtype=float)
+    m_min = np.min(mags)
+    m_mean = np.mean(mags)
+    return np.log(10) / (m_mean - m_min + 1e-6)
+
+
+# -------------------------------------------------------------------
+# 2. STEP: CONVERT EVENT-BASED DATA -> DAILY DATA
+# -------------------------------------------------------------------
+
+
+def filter_by_distance(df_events: pd.DataFrame, max_distance_km: float) -> pd.DataFrame:
+    """
+    Keep only events within `max_distance_km` of the station.
+    """
+    df = df_events.copy()
     df["distance_to_station_km"] = df.apply(
         lambda row: haversine(
             (row["latitude"], row["longitude"]),
@@ -107,284 +102,303 @@ def filter_distance_to_station(
     return df[df["distance_to_station_km"] <= max_distance_km].copy()
 
 
-def compute_rolling_features(df: pd.DataFrame, feature_params: Dict) -> pd.DataFrame:
+def convert_events_to_daily(
+    df_events: pd.DataFrame,
+    start_date: pd.Timestamp,
+    end_date: pd.Timestamp,
+    bin_edges: List[float],
+) -> pd.DataFrame:
     """
-    Compute various rolling or window-based features:
-      - rolling mean of depth
-      - time since last event
-      - rolling b-value
-      - rolling max magnitude & event count
+    Create a daily DataFrame covering [start_date, end_date], inclusive.
+    Each row = 1 day. For each day, store:
+      - All quake magnitudes in a list (col = 'magnitudes_list')
+      - daily_count (number of quakes that day)
+      - daily_max (max magnitude that day)
+      - daily_min (min magnitude that day)
+      - daily_avg (mean magnitude)
+      - daily_class_counts_{c} for each magnitude class c
 
-    Parameters
-    ----------
-    df : pd.DataFrame
-        DataFrame containing at least:
-          'time_utc', 'depth_km', 'magnitude'.
-    feature_params : Dict
-        Dictionary specifying window sizes, e.g.:
-            {
-                "rolling_depth_window": 5,    # int (event-based window)
-                "b_value_window": 50,        # int (event-based window)
-                "rolling_mag_stats_window": "7d",  # time-based rolling
-                "rolling_count_window": "30d"      # time-based rolling
-            }
-
-    Returns
-    -------
-    pd.DataFrame
-        Updated DataFrame with new rolling features.
+    If a day has no quakes, it will have an empty list, daily_count=0, etc.
     """
-    # Sort by time
-    df = df.sort_values("time_utc").copy()
 
-    # 1. Rolling mean of depth (window in # of events)
-    rolling_depth_window = feature_params["rolling_depth_window"]
-    df["rolling_mean_depth"] = (
-        df["depth_km"].rolling(window=rolling_depth_window, min_periods=1).mean()
-    )
+    df = df_events.copy()
+    # Round quake times to day
+    df["date"] = df["time_utc"].dt.floor("D")
 
-    # 2. Time since last event (in days)
-    df["time_utc_shift"] = df["time_utc"].shift(1)
-    df["T_since_last_days"] = (
-        df["time_utc"] - df["time_utc_shift"]
-    ).dt.total_seconds() / (3600.0 * 24.0)
-    df["T_since_last_days"].fillna(0.0, inplace=True)
-    df.drop(columns=["time_utc_shift"], inplace=True)
-
-    # 3. Rolling b-value (over the last N events)
-    b_value_window = feature_params["b_value_window"]
-    b_vals = []
-    for i in range(len(df)):
-        start_idx = max(0, i - b_value_window + 1)
-        subset = df.iloc[start_idx : i + 1]
-        b_vals.append(compute_b_value(subset["magnitude"].values))
-    df["b_value"] = b_vals
-
-    # Delta b-value (current vs 2 steps back)
-    df["b_value_shift2"] = df["b_value"].shift(2)
-    df["Delta_b_i_i_2"] = df["b_value"] - df["b_value_shift2"]
-
-    # 4. Rolling max magnitude in last X days (time-based window)
-    df.set_index("time_utc", inplace=True)
-    rolling_mag_stats_window = feature_params["rolling_mag_stats_window"]
-    df["M_last_week_max"] = df["magnitude"].rolling(rolling_mag_stats_window).max()
-
-    # 5. Rolling count of events in last X days (time-based window)
-    rolling_count_window = feature_params["rolling_count_window"]
-    df["N_eq_30"] = df["magnitude"].rolling(rolling_count_window).count()
-
-    # Reset index so 'time_utc' remains a column
-    df.reset_index(inplace=True)
-
-    return df
-
-
-# -------------------------------------------------------------------
-# 3. ETAS FUNCTION
-# -------------------------------------------------------------------
-
-
-def compute_etas_intensity(df: pd.DataFrame, etas_params: Dict) -> pd.DataFrame:
-    """
-    Efficiently compute ETAS intensity for each event using the standard formula:
-      λ(t, x, y) = μ + ∑[t_i < t] [
-          K * 10^(α*(m_i - M0)) * (t - t_i + c)^(-p) * exp(-d^2 / (2σ^2))
-      ]
-    (Ogata, 1988; Zhuang et al., 2004)
-
-    Expects columns:
-      - 'time_utc' (datetime)
-      - 'latitude', 'longitude' (float, degrees)
-      - 'magnitude_ml' (float) for the event's magnitude
-    Also 'sigma' in km, 'c' in days, etc.
-
-    Returns
-    -------
-    pd.DataFrame
-        DataFrame with a new column 'etas_intensity'.
-    """
-    # Sort events by time ascending
-    df = df.sort_values("time_utc").reset_index(drop=True)
-
-    # Extract arrays for speed
-    times = df["time_utc"].values.astype("datetime64[s]")  # seconds resolution
-    lats = df["latitude"].values
-    lons = df["longitude"].values
-    mags = df["magnitude_ml"].values
-    n = len(df)
-
-    # Unpack ETAS parameters
-    mu = etas_params["mu"]
-    K = etas_params["K"]
-    alpha = etas_params["alpha"]
-    M0 = etas_params["M0"]
-    c_ = etas_params["c"]  # must be in days
-    p_ = etas_params["p"]
-    sigma = etas_params["sigma"]  # must be in km
-
-    # Convert times to float in days
-    times_days = times.astype(float) / 86400.0
-
-    intensities = np.zeros(n, dtype=float)
-
-    for i in range(n):
-        # Indices of all previous events
-        j_idx = np.arange(i)
-        dt = times_days[i] - times_days[j_idx]  # time difference in days
-
-        # Keep only dt > 0
-        mask = dt > 0
-        if not np.any(mask):
-            # no earlier event => intensity = mu
-            intensities[i] = mu
-            continue
-
-        j_idx = j_idx[mask]
-        dt = dt[mask]
-
-        # Spatial distances
-        dist = np.array(
-            [
-                haversine((lats[i], lons[i]), (lats[j], lons[j]), unit=Unit.KILOMETERS)
-                for j in j_idx
-            ]
+    # We also create a class for each event, so we can do daily class counts
+    if bin_edges:
+        df["mag_class"] = df["magnitude_ml"].apply(
+            lambda m: magnitude_to_class(m, bin_edges)
         )
+    else:
+        df["mag_class"] = np.nan
 
-        # Magnitude factor: 10^(alpha * (m_j - M0))
-        mag_factor = 10.0 ** (alpha * (mags[j_idx] - M0))
-        # Time decay: (dt + c)^(-p)
-        time_decay = (dt + c_) ** (-p_)
-        # Spatial decay: exp(-dist^2 / (2*sigma^2))
-        spatial_decay = np.exp(-(dist**2) / (2.0 * sigma**2))
+    # Group by day, then aggregate
+    # We'll store a list of magnitudes in that day for b-value, etc.
+    group = df.groupby("date")
 
-        intensities[i] = mu + (K * mag_factor * time_decay * spatial_decay).sum()
+    # Build the aggregator
+    daily_agg = group.agg(
+        {
+            "magnitude_ml": list,  # store all magnitudes in a list
+        }
+    )
+    daily_agg.rename(columns={"magnitude_ml": "magnitudes_list"}, inplace=True)
 
-    df["etas_intensity"] = intensities
+    # Add daily_count, daily_max, daily_min, daily_avg
+    daily_agg["daily_count"] = group["magnitude_ml"].count()
+    daily_agg["daily_max"] = group["magnitude_ml"].max()
+    daily_agg["daily_min"] = group["magnitude_ml"].min()
+    daily_agg["daily_avg"] = group["magnitude_ml"].mean()
+
+    # For class counts, pivot
+    if bin_edges:
+        class_counts = group["mag_class"].value_counts().unstack(fill_value=0)
+        # This yields columns for each class index. e.g. 1,2,3...
+        # We'll rename them to daily_class_count_{c}
+        class_counts = class_counts.add_prefix("daily_class_count_")
+        daily_agg = daily_agg.join(class_counts, how="left")
+
+    # Reindex to ensure every day in [start_date .. end_date] is present
+    full_range = pd.date_range(start_date, end_date, freq="D")
+    daily_agg = daily_agg.reindex(full_range)
+    daily_agg.index.name = "date"
+
+    # Fill days with no quakes => daily_count=0, daily_max=NaN, etc.
+    # 'magnitudes_list' => empty list for no quakes
+    # We'll fill missing daily_count with 0, but leave daily_max, daily_min, daily_avg as NaN.
+    daily_agg["daily_count"] = daily_agg["daily_count"].fillna(0)
+    # For any missing 'magnitudes_list', we put an empty list
+    daily_agg["magnitudes_list"] = daily_agg["magnitudes_list"].apply(
+        lambda x: x if isinstance(x, list) else []
+    )
+    # For missing daily_class_count_*, fill with 0
+    for col in daily_agg.columns:
+        if col.startswith("daily_class_count_"):
+            daily_agg[col] = daily_agg[col].fillna(0)
+
+    daily_agg.reset_index(inplace=True)
+    return daily_agg
+
+
+# -------------------------------------------------------------------
+# 3. FEATURE COMPUTATIONS ON DAILY DATA
+# -------------------------------------------------------------------
+
+
+def compute_time_since_last_eq(df_daily: pd.DataFrame) -> pd.DataFrame:
+    """
+    Computes 'time_since_last_eq' in days.
+    If daily_count > 0, reset to 0; otherwise, increment from the previous day.
+    """
+
+    df = df_daily.sort_values("date").copy()
+
+    # Create a mask where an earthquake occurred (daily_count > 0)
+    event_occurred = df["daily_count"] > 0
+
+    # Assign unique event numbers by cumulatively summing occurrences
+    event_number = event_occurred.cumsum()
+
+    # Get the last event date for each row using forward fill
+    last_event_date = df["date"].where(event_occurred).ffill()
+
+    # Compute the days since the last event
+    df["time_since_last_eq"] = (df["date"] - last_event_date).dt.days
+
+    return df
+
+
+def compute_time_since_last_eq_per_class(df_daily: pd.DataFrame) -> pd.DataFrame:
+    """
+    For each possible class (determined from daily_class_count_* columns),
+    create a column `time_since_class_{c}` that increments daily unless
+    the day has >=1 quake in that class.
+    """
+
+    df = df_daily.sort_values("date").copy()
+
+    # Identify the highest class number dynamically
+    class_cols = [col for col in df.columns if re.match(r"daily_class_count_\d+", col)]
+    class_numbers = [int(col.split("_")[-1]) for col in class_cols]
+
+    if not class_numbers:
+        return df  # No class count columns, return unchanged
+
+    max_class = max(class_numbers)
+
+    for c in range(max_class + 1):
+        col_name = f"time_since_class_{c}"
+        daily_col = f"daily_class_count_{c}"
+
+        if daily_col not in df.columns:
+            df[daily_col] = 0  # Ensure missing class columns default to zero
+
+        # Identify where events occurred in this class
+        event_occurred = df[daily_col] > 0
+
+        # Get the last event date for each row using forward fill
+        last_event_date = df["date"].where(event_occurred).ffill()
+
+        # Compute days since last event
+        df[col_name] = (df["date"] - last_event_date).dt.days.fillna(0).astype(int)
+
+    return df
+
+
+def compute_rolling_b_value_daily(
+    df_daily: pd.DataFrame, days_window: int = 30
+) -> pd.DataFrame:
+    """
+    For each day, gather all magnitudes from the past `days_window` days (including current day),
+    flatten them, and compute a b-value. Store in a column 'daily_b_value'.
+    """
+    df = df_daily.sort_values("date").copy()
+    b_values = []
+    for i in range(len(df)):
+        # current day
+        current_day = df.loc[i, "date"]
+        start_day = current_day - pd.Timedelta(days=days_window - 1)
+        # subset the df between [start_day, current_day]
+        subset = df[(df["date"] >= start_day) & (df["date"] <= current_day)]
+        # flatten magnitudes
+        all_mags = []
+        for mags_list in subset["magnitudes_list"]:
+            all_mags.extend(mags_list)
+        bval = compute_b_value(all_mags)
+        b_values.append(bval)
+    df["daily_b_value"] = b_values
+    return df
+
+
+def compute_additional_time_series_features(df_daily: pd.DataFrame) -> pd.DataFrame:
+    """
+    Typical ML-friendly time series features on daily data, such as:
+      - daily_count_diff, daily_max_diff
+      - rolling sums/means for daily_count, daily_max
+    Example windows: 7-day, 30-day
+    """
+    df = df_daily.sort_values("date").copy()
+    df["daily_count_diff"] = df["daily_count"].diff()
+    df["daily_max_diff"] = df["daily_max"].diff()
+
+    # 7-day rolling
+    df["daily_count_7d_sum"] = df["daily_count"].rolling(7).sum()
+    df["daily_max_7d_mean"] = df["daily_max"].rolling(7).mean()
+
+    # 30-day rolling
+    df["daily_count_30d_sum"] = df["daily_count"].rolling(30).sum()
+    df["daily_max_30d_mean"] = df["daily_max"].rolling(30).mean()
+
     return df
 
 
 # -------------------------------------------------------------------
-# 4. TARGET CREATION FUNCTION
+# 4. TARGET CREATION (DAILY)
 # -------------------------------------------------------------------
 
 
-def create_target_variable(df: pd.DataFrame, target_params: Dict) -> pd.DataFrame:
+def create_daily_target(df_daily: pd.DataFrame, target_params: Dict) -> pd.DataFrame:
     """
-    Create the target variable:
-      - "Max earthquake magnitude in the next N days" => 'max_mag_next_30d'
-      - Optionally convert to multi-class bins => 'target_class'
+    max_mag_next_{N}d: the maximum daily_max in the next N days (strictly after the current day).
+    If bin_edges in target_params, also produce 'target_class'.
 
-    Parameters
-    ----------
-    df : pd.DataFrame
-        DataFrame with 'time_utc' and 'magnitude'.
-    target_params : Dict
-        Dictionary with:
-            "next_days_for_target": int,
-            "magnitude_bin_edges": list (optional)
-
-    Returns
-    -------
-    pd.DataFrame
-        Updated DataFrame with new target columns: 'max_mag_next_30d', 'target_class' (if bins provided).
+    We'll use 'daily_max' to represent that day's largest quake magnitude.
     """
+    df = df_daily.sort_values("date").reset_index(drop=True)
     next_days_for_target = target_params["next_days_for_target"]
     bin_edges = target_params.get("magnitude_bin_edges", [])
 
-    # 1. Sort by time & convert times to numeric for merging
-    df = df.sort_values("time_utc").reset_index(drop=True)
-    df["timestamp"] = df["time_utc"].astype(np.int64) // 10**9  # seconds since epoch
+    col_name = f"max_mag_next_{next_days_for_target}d"
+    df[col_name] = np.nan
 
-    # 2. Prepare a copy with an upper bound in seconds
-    day_in_seconds = 86400
-    df_shifted = df.copy()
-    df_shifted["timestamp_min"] = (
-        df_shifted["timestamp"] + next_days_for_target * day_in_seconds
-    )
-
-    df["max_mag_next_30d"] = np.nan
-
-    # 3. Naive loop: for each row i, search future events in [t, t + next_days_for_target)
-    for i in range(len(df_shifted)):
-        current_ts = df_shifted.loc[i, "timestamp"]
-        max_ts = df_shifted.loc[i, "timestamp_min"]
-        future_subset = df_shifted[
-            (df_shifted["timestamp"] >= current_ts) & (df_shifted["timestamp"] < max_ts)
-        ]
-        if not future_subset.empty:
-            df_shifted.loc[i, "max_mag_next_30d"] = future_subset["magnitude"].max()
+    for i in range(len(df)):
+        current_date = df.loc[i, "date"]
+        future_date = current_date + pd.Timedelta(days=next_days_for_target)
+        subset = df[(df["date"] > current_date) & (df["date"] < future_date)]
+        if not subset.empty:
+            df.loc[i, col_name] = subset["daily_max"].max()
         else:
-            df_shifted.loc[i, "max_mag_next_30d"] = np.nan
+            df.loc[i, col_name] = np.nan
 
-    df["max_mag_next_30d"] = df_shifted["max_mag_next_30d"].values
-
-    # 4. Convert to classes if bin_edges given
     if bin_edges:
-        df["target_class"] = df["max_mag_next_30d"].apply(
+        df["target_class"] = df[col_name].apply(
             lambda m: magnitude_to_class(m, bin_edges)
         )
     else:
         df["target_class"] = np.nan
 
-    # 5. Clean up
-    df.drop(columns=["timestamp"], inplace=True)
-
     return df
 
 
 # -------------------------------------------------------------------
-# 5. MAIN FUNCTION
+# 5. MAIN PIPELINE
 # -------------------------------------------------------------------
 
 
 def main():
-    # 1. Load configuration
+    # 1. Read config
     config_file = "../../../config/10-features-config.yaml"
     with open(config_file, "r", encoding="utf-8") as f:
         config = yaml.safe_load(f)["features_config"]
 
     input_data_path = config["input_data_path"]
     output_data_path = config["output_data_path"]
-    feature_params = config["feature_params"]
-    etas_params = config["etas_params"]
+
+    # We assume bin_edges might come from target_params, for example
     target_params = config["target_params"]
+    bin_edges = target_params.get("magnitude_bin_edges", [])
 
-    # 2. Read the raw data
-    df = pd.read_parquet(input_data_path, engine="pyarrow")
+    # Some generic feature params
+    feature_params = config["feature_params"]
+    max_distance_km = feature_params.get("max_distance_km", 50)
+    b_value_rolling_window_days = feature_params.get("b_value_rolling_window_days", 30)
 
-    import ipdb
+    # 2. Read event-based data
+    df_events = pd.read_parquet(input_data_path, engine="pyarrow")
 
-    ipdb.set_trace()
+    # 3. Convert magnitudes => ML, filter by distance
+    df_events["magnitude_ml"] = df_events.apply(convert_magnitude, axis=1)
+    df_events.dropna(subset=["magnitude_ml"], inplace=True)
+    df_events = filter_by_distance(df_events, max_distance_km)
 
-    # 3. Convert magnitudes to ML
-    df["magnitude_ml"] = df.apply(convert_magnitude, axis=1)
-    df.dropna(subset=["magnitude_ml"], inplace=True)
+    # 4. Determine daily date range
+    min_date = df_events["time_utc"].min().floor("D")
+    max_date = df_events["time_utc"].max().floor("D")
 
-    # 4. Filter earthquakes near the station (within 50 km)
-    #    (Assumes the dataset has 'station_latitude' and 'station_longitude' columns.)
-    df = filter_distance_to_station(df, max_distance_km=50)
+    # 5. Convert events to daily
+    df_daily = convert_events_to_daily(
+        df_events, start_date=min_date, end_date=max_date, bin_edges=bin_edges
+    )
 
-    # 5. Build rolling features (uses the original 'magnitude' column for b-value, etc.)
-    #    NOTE: If you prefer to use 'magnitude_ml' for b_value, you can swap it inside compute_rolling_features.
-    df = compute_rolling_features(df, feature_params)
+    # 6. Compute daily-based features
+    #    6a) "time since last eq"
+    df_daily = compute_time_since_last_eq(df_daily)
 
-    # 6. Compute ETAS intensity (using 'magnitude_ml')
-    df = compute_etas_intensity(df, etas_params)
+    #    6b) time since last eq for each magnitude class
+    #        (One column per class: time_since_class_0, time_since_class_1, etc.)
+    if bin_edges:
+        df_daily = compute_time_since_last_eq_per_class(df_daily)
 
-    # 7. Create target variable
-    df = create_target_variable(df, target_params)
+    #    6c) daily b-value (rolling window in days)
+    #        We'll gather the past X days of magnitudes_list and compute b-value
+    df_daily = compute_rolling_b_value_daily(
+        df_daily, days_window=b_value_rolling_window_days
+    )
 
-    # 8. Save final DataFrame
+    #    6d) Additional typical time series features
+    df_daily = compute_additional_time_series_features(df_daily)
+
+    # 7. Create daily-level target (max magnitude in next N days)
+    df_daily = create_daily_target(df_daily, target_params)
+
+    # 8. Save final daily DataFrame
     os.makedirs(os.path.dirname(output_data_path), exist_ok=True)
-    df.to_parquet(output_data_path, index=False, engine="pyarrow")
+    df_daily.to_parquet(output_data_path, index=False, engine="pyarrow")
 
-    print(f"Feature table created and saved to: {output_data_path}")
-    print(f"Total rows in feature table: {len(df)}")
+    print(f"Daily feature table saved to: {output_data_path}")
+    print(f"Total rows in daily feature table: {len(df_daily)}")
 
-
-# -------------------------------------------------------------------
-# 6. ENTRY POINT
-# -------------------------------------------------------------------
 
 if __name__ == "__main__":
     main()
