@@ -256,10 +256,8 @@ def compute_rolling_b_value_daily(
     df = df_daily.sort_values("date").copy()
     b_values = []
     for i in range(len(df)):
-        # current day
         current_day = df.loc[i, "date"]
         start_day = current_day - pd.Timedelta(days=days_window - 1)
-        # subset the df between [start_day, current_day]
         subset = df[(df["date"] >= start_day) & (df["date"] <= current_day)]
         # flatten magnitudes
         all_mags = []
@@ -294,7 +292,96 @@ def compute_additional_time_series_features(df_daily: pd.DataFrame) -> pd.DataFr
 
 
 # -------------------------------------------------------------------
-# 4. TARGET CREATION (DAILY)
+# 4. ETAS INTENSITY (DAILY)
+# -------------------------------------------------------------------
+
+
+def compute_daily_etas(
+    df_daily: pd.DataFrame, df_events: pd.DataFrame, etas_params: Dict
+) -> pd.DataFrame:
+    """
+    For each day in df_daily, compute ETAS intensity at that day's reference time (midnight).
+    ETAS formula:
+      λ_i = μ + Σ_j [ K * 10^(α * (m_j - M0)) * (t_i - t_j + c)^(-p) * exp(- dist^2 / (2*sigma^2)) ]
+    summing over all events j with t_j < t_i.
+
+    We assume a single station lat/lon from the first event row. If you have multiple stations,
+    adapt accordingly. Times are in days since epoch, distances in km.
+    """
+    df_out = df_daily.sort_values("date").copy().reset_index(drop=True)
+    df_events_sorted = df_events.sort_values("time_utc").reset_index(drop=True)
+
+    if len(df_events_sorted) == 0:
+        # If no events after filtering, just set ETAS = mu for all days
+        mu = etas_params["mu"]
+        df_out["daily_etas_intensity"] = mu
+        return df_out
+
+    # 1. Station location from first row of df_events
+    station_lat = df_events_sorted["station_latitude"].iloc[0]
+    station_lon = df_events_sorted["station_longitude"].iloc[0]
+
+    # 2. Convert event times to float days
+    event_times = df_events_sorted["time_utc"].values.astype("datetime64[s]")
+    event_days_float = event_times.astype(float) / 86400.0
+
+    event_lats = df_events_sorted["latitude"].values
+    event_lons = df_events_sorted["longitude"].values
+    event_mags = df_events_sorted["magnitude_ml"].values
+
+    # 3. Unpack ETAS parameters
+    mu = etas_params["mu"]
+    K_ = etas_params["K"]
+    alpha = etas_params["alpha"]
+    M0 = etas_params["M0"]
+    c_ = etas_params["c"]  # in days
+    p_ = etas_params["p"]
+    sigma = etas_params["sigma"]  # in km
+
+    daily_etas = []
+
+    for i in range(len(df_out)):
+        day_i = df_out.loc[i, "date"]
+        # Convert day_i to float days since epoch
+        t_i_float = day_i.value / 1e9 / 86400.0  # day_i.value is ns => seconds => days
+
+        # Find all events with event_days_float < t_i_float
+        mask = event_days_float < t_i_float
+        if not np.any(mask):
+            # no prior events => λ_i = mu
+            daily_etas.append(mu)
+            continue
+
+        e_times = event_days_float[mask]
+        e_lats = event_lats[mask]
+        e_lons = event_lons[mask]
+        e_mags = event_mags[mask]
+
+        dt = t_i_float - e_times  # in days
+        # Distances from station
+        dist_array = np.array(
+            [
+                haversine(
+                    (station_lat, station_lon), (lat_, lon_), unit=Unit.KILOMETERS
+                )
+                for lat_, lon_ in zip(e_lats, e_lons)
+            ]
+        )
+
+        # ETAS terms
+        mag_factor = 10.0 ** (alpha * (e_mags - M0))
+        time_decay = (dt + c_) ** (-p_)
+        spatial_decay = np.exp(-(dist_array**2) / (2.0 * sigma**2))
+
+        lam_i = mu + (K_ * mag_factor * time_decay * spatial_decay).sum()
+        daily_etas.append(lam_i)
+
+    df_out["daily_etas_intensity"] = daily_etas
+    return df_out
+
+
+# -------------------------------------------------------------------
+# 5. TARGET CREATION (DAILY)
 # -------------------------------------------------------------------
 
 
@@ -332,7 +419,7 @@ def create_daily_target(df_daily: pd.DataFrame, target_params: Dict) -> pd.DataF
 
 
 # -------------------------------------------------------------------
-# 5. MAIN PIPELINE
+# 6. MAIN PIPELINE
 # -------------------------------------------------------------------
 
 
@@ -354,6 +441,9 @@ def main():
     max_distance_km = feature_params.get("max_distance_km", 50)
     b_value_rolling_window_days = feature_params.get("b_value_rolling_window_days", 30)
 
+    # ETAS params
+    etas_params = config["etas_params"]  # Must contain: mu, K, alpha, M0, c, p, sigma
+
     # 2. Read event-based data
     df_events = pd.read_parquet(input_data_path, engine="pyarrow")
 
@@ -363,36 +453,45 @@ def main():
     df_events = filter_by_distance(df_events, max_distance_km)
 
     # 4. Determine daily date range
-    min_date = df_events["time_utc"].min().floor("D")
-    max_date = df_events["time_utc"].max().floor("D")
+    if len(df_events) == 0:
+        print("No events found after filtering. Creating an empty daily table.")
+        # Edge case: If truly no events, we might define some default date range
+        # or skip. We'll define a 1-day range for demonstration.
+        min_date = pd.Timestamp("2020-01-01")
+        max_date = pd.Timestamp("2020-01-01")
+    else:
+        min_date = df_events["time_utc"].min().floor("D")
+        max_date = df_events["time_utc"].max().floor("D")
 
     # 5. Convert events to daily
     df_daily = convert_events_to_daily(
         df_events, start_date=min_date, end_date=max_date, bin_edges=bin_edges
     )
 
-    # 6. Compute daily-based features
-    #    6a) "time since last eq"
+    # 6. Compute daily ETAS intensity
+    df_daily = compute_daily_etas(df_daily, df_events, etas_params)
+
+    # 7. Compute daily-based features
+    #    7a) "time since last eq"
     df_daily = compute_time_since_last_eq(df_daily)
 
-    #    6b) time since last eq for each magnitude class
+    #    7b) time since last eq for each magnitude class
     #        (One column per class: time_since_class_0, time_since_class_1, etc.)
     if bin_edges:
         df_daily = compute_time_since_last_eq_per_class(df_daily)
 
-    #    6c) daily b-value (rolling window in days)
-    #        We'll gather the past X days of magnitudes_list and compute b-value
+    #    7c) daily b-value (rolling window in days)
     df_daily = compute_rolling_b_value_daily(
         df_daily, days_window=b_value_rolling_window_days
     )
 
-    #    6d) Additional typical time series features
+    #    7d) Additional typical time series features
     df_daily = compute_additional_time_series_features(df_daily)
 
-    # 7. Create daily-level target (max magnitude in next N days)
+    # 8. Create daily-level target (max magnitude in next N days)
     df_daily = create_daily_target(df_daily, target_params)
 
-    # 8. Save final daily DataFrame
+    # 9. Save final daily DataFrame
     os.makedirs(os.path.dirname(output_data_path), exist_ok=True)
     df_daily.to_parquet(output_data_path, index=False, engine="pyarrow")
 
