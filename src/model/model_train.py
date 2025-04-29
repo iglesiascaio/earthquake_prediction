@@ -102,7 +102,7 @@ def get_model_and_param_grid(model_name: str, task: str, y_train=None):
         if model_name == "LGBMClassifier":
             model = LGBMClassifier(
                 # Tree structure & complexity control:
-                num_leaves=10,  # Lower value reduces complexity
+                num_leaves=8,  # Lower value reduces complexity
                 max_depth=2,  # Limits tree depth
                 min_child_samples=50,  # More samples per leaf
                 # Regularization:
@@ -115,12 +115,13 @@ def get_model_and_param_grid(model_name: str, task: str, y_train=None):
                 # Boosting control:
                 learning_rate=0.01,
                 n_estimators=100,
-                boosting_type="gbdt",
+                boosting_type="rf",
                 # Early stopping & convergence:
                 min_gain_to_split=0.01,
                 max_bin=255,
                 # Handling imbalanced classes:
-                is_unbalance=True,  # Alternatively, use class_weight='balanced'
+                # is_unbalance=True,  # Alternatively, use class_weight='balanced'
+                class_weight="balanced",
                 # Randomness:
                 random_state=42,
                 verbose=-1,
@@ -187,6 +188,14 @@ def evaluate_model(
         cm = confusion_matrix(y, y_pred)
         report_str += f"Accuracy: {acc:.4f}\n\nConfusion Matrix:\n{cm}\n\n"
 
+        # Compute average ROC-AUC (One vs. Rest) if possible
+        try:
+            y_prob = model_pipeline.predict_proba(X)
+            roc_auc = roc_auc_score(y, y_prob, multi_class="ovr", average="macro")
+            report_str += f"Average ROC-AUC (One vs. Rest): {roc_auc:.4f}\n\n"
+        except Exception as e:
+            report_str += f"Average ROC-AUC could not be computed: {e}\n\n"
+
         # Plot and save the confusion matrix heatmap
         plt.figure(figsize=(6, 4))
         classes = np.unique(np.concatenate((y, y_pred)))
@@ -215,6 +224,7 @@ def evaluate_model(
     with open(eval_filename, "w") as f:
         f.write(report_str)
     print(f"Saved evaluation metrics to {eval_filename}")
+    print(report_str)
 
 
 def plot_shap_values(
@@ -255,7 +265,7 @@ def main():
 
     # Set task and tuning flag
     task = "classification"  # This script is set up for classification
-    do_tuning = True  # Set to True if you want hyperparameter tuning
+    do_tuning = False  # Set to True if you want hyperparameter tuning
 
     # Select the model(s) to run (using LGBMClassifier here)
     selected_models = ["LGBMClassifier"]
