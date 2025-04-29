@@ -7,7 +7,11 @@ __pycache__/
 *.so
 
 # Data files
-*.parquet
+# *.parquet
+
+# Other output files
+*.txt
+*.png
 
 # Output files from running on Supercloud
 *.out
