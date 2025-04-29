@@ -4,7 +4,22 @@ download_config:
   min_magnitude: 1.0
   max_magnitude: 9.0
   network: "CI"
-  station: "PAS"
+  stations:
+    - PAS
+    - BSC
+    - LBT
+    - DAX
+    - PMO
+    - HVL
+    - ELK
+    - PHX
+    - CVD
+    - MER
+    - ION
+    - SCS
+    - KBR
+    - MAN
+    - SCL
 
   data_paths:
     raw_data: "../../../data/raw"
