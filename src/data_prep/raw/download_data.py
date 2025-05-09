@@ -7,160 +7,155 @@ import pandas as pd
 from obspy import UTCDateTime, Catalog
 from obspy.clients.fdsn import Client
 
+# ---------------------------------------------------------------------------
+# 1. Station metadata helper (one tiny improvement)
+# ---------------------------------------------------------------------------
+
 
 def get_station_metadata(fdsn_client, network_code, station_code):
     """Retrieve metadata for one station."""
-    try:
-        inv = fdsn_client.get_stations(
-            network=network_code, station=station_code, level="station"
-        )
-        stn = inv[0][0]  # first network, first station
-        return {
-            "station_code": station_code,
-            "station_latitude": stn.latitude,
-            "station_longitude": stn.longitude,
-            "station_elevation_m": stn.elevation,
-        }
-    except Exception:
-        return {
-            "station_code": station_code,
-            "station_latitude": None,
-            "station_longitude": None,
-            "station_elevation_m": None,
-        }
-
-
-def fetch_events_in_range(fdsn_client, start_time, end_time, min_mag=1.0, max_mag=9.0):
-    """Fetch a catalog of events for a given time range."""
-    try:
-        return fdsn_client.get_events(
-            starttime=start_time,
-            endtime=end_time,
-            minmagnitude=min_mag,
-            maxmagnitude=max_mag,
-        )
-    except Exception as e:
-        print(f"[WARN] Failed to fetch events from {start_time} to {end_time}: {e}")
-        return None
-
-
-def get_earthquake_data_chunked(
-    start_time,
-    end_time,
-    min_magnitude=1.0,
-    max_magnitude=9.0,
-    network_code="CI",
-    station_code="PAS",
-    chunk_days=30,
-):
-    """
-    Fetch earthquake events in chunks for a given station (if station filtering is enabled).
-    Enriches the events with the station metadata.
-    """
-    try:
-        fdsn_client = Client("SCEDC")
-    except Exception:
-        print("[WARN] SCEDC unavailable, falling back to IRIS.")
-        fdsn_client = Client("IRIS")
-
-    # Fetch station metadata for this station
-    station_meta = get_station_metadata(fdsn_client, network_code, station_code)
-
-    # Query events in chunked intervals
-    chunk_catalogs = []
-    cur_start = start_time
-    seconds_per_day = 86400
-    while cur_start < end_time:
-        cur_end = cur_start + chunk_days * seconds_per_day
-        if cur_end > end_time:
-            cur_end = end_time
-
-        cat_chunk = fetch_events_in_range(
-            fdsn_client,
-            start_time=cur_start,
-            end_time=cur_end,
-            min_mag=min_magnitude,
-            max_mag=max_magnitude,
-        )
-        if cat_chunk is not None:
-            chunk_catalogs.append(cat_chunk)
-        cur_start = cur_end
-
-    # Combine all chunks into a single catalog
-    combined_catalog = Catalog()
-    for cat in chunk_catalogs:
-        combined_catalog.extend(cat)
-
-    # Build event records and append station metadata
-    records = []
-    for event in combined_catalog:
-        if not event.origins or not event.magnitudes:
+    for level in ("station", "channel"):  # ← NEW: second try at 'channel'
+        try:
+            inv = fdsn_client.get_stations(
+                network=network_code, station=station_code, level=level
+            )
+            stn = inv[0][0]  # first network, first station
+            return {
+                "station_code": station_code,
+                "station_latitude": stn.latitude,
+                "station_longitude": stn.longitude,
+                "station_elevation_m": stn.elevation,
+            }
+        except Exception:
             continue
 
-        origin = event.origins[0]
-        magnitude = event.magnitudes[0]
+    # still nothing → return None
+    return {
+        "station_code": station_code,
+        "station_latitude": None,
+        "station_longitude": None,
+        "station_elevation_m": None,
+    }
 
-        record = {
-            "event_id": event.resource_id.id,
-            "time_utc": origin.time.datetime,
-            "latitude": origin.latitude,
-            "longitude": origin.longitude,
-            "depth_km": origin.depth / 1000.0 if origin.depth else None,
-            "magnitude": magnitude.mag,
-            "magnitude_type": magnitude.magnitude_type,
-            "event_type": str(event.event_type) if event.event_type else None,
-            # Station metadata from current iteration
-            "station_code": station_code,
-            "station_latitude": station_meta["station_latitude"],
-            "station_longitude": station_meta["station_longitude"],
-            "station_elevation_m": station_meta["station_elevation_m"],
-        }
-        records.append(record)
 
-    return pd.DataFrame(records)
+# ---------------------------------------------------------------------------
+# 2. Event download once for all stations
+# ---------------------------------------------------------------------------
+
+
+def download_catalog_chunked(
+    fdsn_client, start_time, end_time, min_mag, max_mag, chunk_days
+):
+    """Fetch one regional catalog in time chunks and return a single Catalog."""
+    chunks = Catalog()
+    cur = start_time
+    daysec = 86400
+    while cur < end_time:
+        nxt = min(cur + chunk_days * daysec, end_time)
+        try:
+            cat = fdsn_client.get_events(
+                starttime=cur,
+                endtime=nxt,
+                minmagnitude=min_mag,
+                maxmagnitude=max_mag,
+            )
+            chunks.extend(cat)
+        except Exception as e:
+            print(f"[WARN] event fetch {cur}–{nxt}: {e}")
+        cur = nxt
+    return chunks
+
+
+# ---------------------------------------------------------------------------
+# 3. Build one DataFrame and replicate per station
+# ---------------------------------------------------------------------------
+
+
+def catalog_to_dataframe(catalog: Catalog) -> pd.DataFrame:
+    """Convert an ObsPy Catalog to a bare-bones DataFrame (no station cols)."""
+    recs = []
+    for ev in catalog:
+        if not ev.origins or not ev.magnitudes:
+            continue
+        o = ev.origins[0]
+        m = ev.magnitudes[0]
+        recs.append(
+            dict(
+                event_id=ev.resource_id.id,
+                time_utc=o.time.datetime,
+                latitude=o.latitude,
+                longitude=o.longitude,
+                depth_km=o.depth / 1000 if o.depth else None,
+                magnitude=m.mag,
+                magnitude_type=m.magnitude_type,
+                event_type=str(ev.event_type) if ev.event_type else None,
+            )
+        )
+    return pd.DataFrame.from_records(recs)
+
+
+# ---------------------------------------------------------------------------
+# 4. Main
+# ---------------------------------------------------------------------------
 
 
 def main():
-    # 1. Load configuration
-    config_file = "../../../config/00-download-config.yaml"
-    with open(config_file, "r", encoding="utf-8") as f:
-        all_config = yaml.safe_load(f)
-    config = all_config["download_config"]
+    # ------------------------------------------------------------------
+    # read config
+    # ------------------------------------------------------------------
+    cfg_file = "../../../config/00-download-config.yaml"
+    with open(cfg_file, "r", encoding="utf-8") as f:
+        cfg = yaml.safe_load(f)["download_config"]
 
-    start_time = UTCDateTime(config["start_time"])
-    end_time = UTCDateTime(config["end_time"])
-    min_magnitude = config["min_magnitude"]
-    max_magnitude = config["max_magnitude"]
-    network_code = config["network"]
+    start = UTCDateTime(cfg["start_time"])
+    end = UTCDateTime(cfg["end_time"])
+    min_mag = cfg["min_magnitude"]
+    max_mag = cfg["max_magnitude"]
+    net = cfg["network"]
+    station_codes = cfg["stations"]  # ← stays in YAML
+    chunk_days = cfg.get("chunk_days", 30)
 
-    # Here the config is assumed to have a "stations" list:
-    station_codes = config["stations"]  # e.g., ["PAS", "ABC", "XYZ"]
+    raw_dir = cfg["data_paths"]["raw_data"]
+    os.makedirs(raw_dir, exist_ok=True)
 
-    raw_data_dir = config["data_paths"]["raw_data"]
-    os.makedirs(raw_data_dir, exist_ok=True)
+    # ------------------------------------------------------------------
+    # connect once
+    # ------------------------------------------------------------------
+    try:
+        cli = Client("SCEDC")
+    except Exception:
+        print("[WARN] SCEDC unavailable, falling back to IRIS.")
+        cli = Client("IRIS")
 
-    # 2. Loop over all stations to fetch and combine event data
-    all_dfs = []
-    for station_code in station_codes:
-        print(f"[INFO] Processing station: {station_code}")
-        df_station = get_earthquake_data_chunked(
-            start_time=start_time,
-            end_time=end_time,
-            min_magnitude=min_magnitude,
-            max_magnitude=max_magnitude,
-            network_code=network_code,
-            station_code=station_code,
-            chunk_days=30,  # can also be set in the config
-        )
-        all_dfs.append(df_station)
+    # ------------------------------------------------------------------
+    # download ONE catalog for all stations
+    # ------------------------------------------------------------------
+    print("[INFO] downloading regional catalog …")
+    catalog = download_catalog_chunked(cli, start, end, min_mag, max_mag, chunk_days)
+    df_events = catalog_to_dataframe(catalog)
+    print(f"[INFO] events in regional catalog: {len(df_events)}")
 
-    # Optionally, deduplicate events if the same event appears across stations.
-    df_combined = pd.concat(all_dfs, ignore_index=True)
-    print(f"[INFO] Total events downloaded (combined): {len(df_combined)}")
+    # ------------------------------------------------------------------
+    # replicate rows per station; attach metadata
+    # ------------------------------------------------------------------
+    frames = []
+    for st in station_codes:
+        meta = get_station_metadata(cli, net, st)
+        if meta["station_latitude"] is None:
+            print(f"[WARN] {st}: metadata not found; kept as None.")
+        df_st = df_events.copy()
+        df_st["station_code"] = st
+        df_st["station_latitude"] = meta["station_latitude"]
+        df_st["station_longitude"] = meta["station_longitude"]
+        df_st["station_elevation_m"] = meta["station_elevation_m"]
+        frames.append(df_st)
 
-    output_file_path = os.path.join(raw_data_dir, config["output_file_name"])
-    df_combined.to_parquet(output_file_path, index=False, engine="pyarrow")
-    print(f"[INFO] Data successfully saved to: {output_file_path}")
+    df_all = pd.concat(frames, ignore_index=True)
+    print(f"[INFO] total rows (events × stations): {len(df_all)}")
+
+    out_path = os.path.join(raw_dir, cfg["output_file_name"])
+    df_all.to_parquet(out_path, index=False, engine="pyarrow")
+    print(f"[INFO] saved to {out_path}")
 
 
 if __name__ == "__main__":
