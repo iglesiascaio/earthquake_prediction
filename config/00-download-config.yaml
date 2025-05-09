@@ -7,20 +7,23 @@ download_config:
   stations:
     - PAS
     - BSC
-    - LBT
-    - DAX
-    - PMO
-    - HVL
-    - ELK
-    - PHX
-    - CVD
-    - MER
-    - ION
-    - SCS
-    - KBR
     - MAN
-    - SCL
-
+    - MAG
+    - ABL  
+    - AGM  
+    - BAC  
+    - BHP  
+    - CFS  
+    - DLA  
+    - EML  
+    - FMO  
+    - GOR  
+    - HYS  
+    - IPT  
+    - LAF  
+    - MRS  
+    - NWH  
+    - SAN  
   data_paths:
     raw_data: "../../../data/raw"
 
