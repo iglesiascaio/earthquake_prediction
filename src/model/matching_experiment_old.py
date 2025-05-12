@@ -239,7 +239,7 @@ def evaluate(pipe, X, y, title, τ=0.5):
 # 5. Main run
 # ----------------------------------------------------------
 undersampling_random = False
-undersampling_matching = False
+undersampling_matching = True
 
 X_train, X_test, y_train, y_test = load_and_split_data(
     "../../data/features/earthquake_features.parquet"
@@ -271,7 +271,7 @@ if undersampling_random:
     X_train, y_train = undersample_random(X_train, y_train, random_state=42)
 elif undersampling_matching:
     X_train, y_train = undersample_by_matching(
-        X_train, y_train, feats, n_clusters=50, random_state=42
+        X_train, y_train, feats, n_clusters=1, random_state=42
     )
 
 prep = Pipeline([("imp", SimpleImputer(strategy="median")), ("sc", StandardScaler())])
