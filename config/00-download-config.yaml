@@ -24,6 +24,35 @@ download_config:
     - MRS  
     - NWH  
     - SAN  
+    - PDW
+    - PTD
+    - LVY
+    - WRC2
+    - BTP
+    - BAI
+    - SYN
+    - JVA
+    - Q0072
+    - CPO
+    - KRV3
+    - SES
+    - PLR
+    - DGR
+    - SDG
+    - YUH2
+    - BTL2
+    - CRR
+    - STG
+    - FRM
+    - RRX
+    - CWC
+    - JRC2
+    - CYP
+    - CLI2
+    - BRE
+    - MAN
+    - PASC
+    - SDD
   data_paths:
     raw_data: "../../../data/raw"
 
