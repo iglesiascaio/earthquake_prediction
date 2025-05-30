@@ -16,6 +16,9 @@ __pycache__/
 # Output files from running on Supercloud
 *.out
 
+# Pickle files
+*.pkl
+
 # Distribution / packaging
 .Python
 build/
