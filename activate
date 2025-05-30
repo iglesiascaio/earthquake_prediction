@@ -1,0 +1,8 @@
+#!/bin/bash
+
+#TODO add virtual environment activation
+export SOURCE=⁠`pwd`
+export PYTHONPATH="$SOURCE"
+
+
+echo "Earthquake environment activated in $SOURCE"
