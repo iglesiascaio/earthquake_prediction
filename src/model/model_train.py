@@ -94,6 +94,7 @@ X_train, X_test, y_train, y_test = load_and_split_data(
     drop_list_cols=True,
     select_top_feats=True,
     top_features=TOP_FEATURES,
+    merge_embeddings=True,
     keep_embeddings=True,
     cutoff_date="2024-01-01",
 )
