@@ -122,5 +122,10 @@ def load_and_split_data(
     X_train.drop(columns=[date_col], inplace=True, errors="ignore")
     X_test.drop(columns=[date_col], inplace=True, errors="ignore")
 
+    # df full for reference (e.g. useful in GNN code)
+    base_cols = [date_col, "station_code", target] + list(X.columns)
+    unique_cols = list(dict.fromkeys(base_cols))
+    df_full = df[unique_cols].copy()
+
     print(f"✅ Data ready. Train rows: {len(X_train)}, Test rows: {len(X_test)}")
-    return X_train, X_test, y_train, y_test
+    return X_train, X_test, y_train, y_test, df_full
