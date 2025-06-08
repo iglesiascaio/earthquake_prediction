@@ -10,8 +10,7 @@ from sklearn.model_selection import TimeSeriesSplit, RandomizedSearchCV
 from sklearn.linear_model import LogisticRegression
 from lightgbm import LGBMClassifier
 
-from .utils import load_and_split_data
-from .utils import evaluate
+from .utils import load_and_split_data, evaluate
 
 warnings.filterwarnings("ignore")
 
@@ -86,7 +85,7 @@ RUN_DIR.mkdir(parents=True, exist_ok=True)
 
 # ========== 5. Load + Train ========== #
 
-X_train, X_test, y_train, y_test = load_and_split_data(
+X_train, X_test, y_train, y_test, _ = load_and_split_data(
     daily_path="./data/features/earthquake_features.parquet",
     seismic_path="./data/embeddings/embeddings_190102.pkl",
     drop_sparse=True,
