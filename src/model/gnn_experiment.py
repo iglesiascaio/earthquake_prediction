@@ -56,7 +56,7 @@ TOP_FEATS = [
     "daily_count_7d_sum",
 ]
 CUT = "2024-01-01"
-BATCH, EPOCHS, LR, HID, RADIUS = 16, 60, 1e-3, 16, 100.0
+BATCH, EPOCHS, LR, HID, RADIUS = 16, 60, 5e-3, 16, 100.0
 RUN_DIR = Path("results") / f"gnn_{datetime.now():%Y-%m-%d_%H-%M-%S}"
 RUN_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -64,10 +64,10 @@ RUN_DIR.mkdir(parents=True, exist_ok=True)
 _, _, _, _, df_full = load_and_split_data(
     DATA["daily"],
     DATA["seismic"],
-    select_top_feats=True,
+    select_top_feats=False,
     top_features=TOP_FEATS,
-    merge_embeddings=True,
-    keep_embeddings=True,
+    merge_embeddings=False,
+    keep_embeddings=False,
     cutoff_date=CUT,
 )
 FEATS = TOP_FEATS + [c for c in df_full.columns if c.startswith("emb_")]
@@ -82,7 +82,7 @@ dl_tr, dl_te, C, *_ = gh.make_dataloaders(
 )
 
 # ---------- 3. model & optimiser ----------------------- #
-model = StationGNN(len(FEATS), hidden=HID, n_layers=2, n_classes=C).to(DEVICE)
+model = StationGNN(len(FEATS), hidden=HID, n_layers=3, n_classes=C).to(DEVICE)
 optim = torch.optim.Adam(model.parameters(), lr=LR)
 loss_fn = torch.nn.CrossEntropyLoss()
 

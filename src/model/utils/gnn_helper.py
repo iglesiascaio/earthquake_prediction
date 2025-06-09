@@ -3,8 +3,8 @@
 """
 Helpers for earthquake GNN experiments.
 
-This file contains ONLY graph-specific utilities; it depends on
-PyTorch Geometric but *not* on scikit-learn or LightGBM.
+This file contains graph-specific utilities; it depends on
+PyTorch Geometric.
 """
 
 from __future__ import annotations
@@ -23,7 +23,7 @@ from torch_geometric.loader import DataLoader
 def build_radius_graph(
     lat: np.ndarray,
     lon: np.ndarray,
-    radius_km: float = 300.0,
+    radius_km: float = 100.0,
     k_fallback: int = 8,
 ) -> torch.Tensor:
     """
@@ -101,9 +101,12 @@ class EarthquakeGraphDataset(Dataset):
 
     def __getitem__(self, idx: int) -> Data:
         day_rows = self.df[self.df.date == self.dates[idx]]
+
+        # initialize node features/labels with median / -1
         x = np.tile(self.med, (self.N, 1)).astype(np.float32)
         y = np.full(self.N, -1, dtype=np.int64)
 
+        # substitute actual features/labels where available
         for _, r in day_rows.iterrows():
             j = self.code2idx.get(r.station_code, None)
             if j is None:
@@ -111,13 +114,16 @@ class EarthquakeGraphDataset(Dataset):
             x[j] = r[self.feats].astype(np.float32).values
             y[j] = int(r[self.tgt])
 
+        # impute any remaining NaNs with median; standardise
         x = np.where(np.isnan(x), self.med, x)
         x = self._standardise(x)
 
+        # impute missing labels with mode
         if (y == -1).any():
             mode = int(np.bincount(y[y != -1]).argmax())
             y[y == -1] = mode
 
+        # return single graph in expected format
         return Data(
             x=torch.from_numpy(x),
             edge_index=self.edge_index,
@@ -199,7 +205,7 @@ def make_dataloaders(
         edge_index,
         te_dates,
     )
-    dl_tr = DataLoader(ds_tr, batch_size=batch_size, shuffle=True)
+    dl_tr = DataLoader(ds_tr, batch_size=batch_size, shuffle=False)
     dl_te = DataLoader(ds_te, batch_size=batch_size, shuffle=False)
 
     n_classes = len(classes)
