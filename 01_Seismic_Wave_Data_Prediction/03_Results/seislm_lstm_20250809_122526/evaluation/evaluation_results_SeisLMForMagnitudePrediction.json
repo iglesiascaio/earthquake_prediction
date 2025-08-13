@@ -1,0 +1,76 @@
+{
+    "model_name": "SeisLMForMagnitudePrediction",
+    "uses_tabular_features": false,
+    "confusion_matrix": [
+        [
+            0,
+            47,
+            74,
+            0
+        ],
+        [
+            0,
+            660,
+            914,
+            0
+        ],
+        [
+            0,
+            429,
+            655,
+            0
+        ],
+        [
+            0,
+            199,
+            268,
+            0
+        ]
+    ],
+    "classification_report": {
+        "Low (< 1.5)": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1-score": 0.0,
+            "support": 121.0
+        },
+        "Moderate (1.5\u20132.5)": {
+            "precision": 0.4943820224719101,
+            "recall": 0.4193138500635324,
+            "f1-score": 0.4537641801306291,
+            "support": 1574.0
+        },
+        "High (2.5\u20133.5)": {
+            "precision": 0.34275248560962845,
+            "recall": 0.6042435424354243,
+            "f1-score": 0.4373956594323873,
+            "support": 1084.0
+        },
+        "Very High (> 3.5)": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1-score": 0.0,
+            "support": 467.0
+        },
+        "accuracy": 0.4051139864448552,
+        "macro avg": {
+            "precision": 0.20928362702038464,
+            "recall": 0.2558893481247392,
+            "f1-score": 0.2227899598907541,
+            "support": 3246.0
+        },
+        "weighted avg": {
+            "precision": 0.35419007941208375,
+            "recall": 0.4051139864448552,
+            "f1-score": 0.36610034329954344,
+            "support": 3246.0
+        }
+    },
+    "roc_auc": {
+        "0": 0.5577705785123966,
+        "1": 0.5257422119611146,
+        "2": 0.5192570600544119,
+        "3": 0.4888653275214152
+    },
+    "accuracy": 0.4051139864448552
+}

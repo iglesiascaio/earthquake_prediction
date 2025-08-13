@@ -1,0 +1,21 @@
+{
+    "patch_size": 64,
+    "stride": 64,
+    "embed_dim": 768,
+    "num_layers": 12,
+    "num_heads": 12,
+    "mlp_hidden_dim": 3072,
+    "dropout": 0.1,
+    "spacewise_every_n_layers": 12,
+    "scaler_cls": "<class 'model.scaler.CausalPatchStdMeanScaler'>",
+    "output_distribution_classes": [
+        "<class 'model.distribution.MixtureOfStudentTsOutput'>"
+    ],
+    "spacewise_first": false,
+    "output_distribution_kwargs": {
+        "k_components": 24
+    },
+    "use_memory_efficient_attention": true,
+    "stabilize_with_global": true,
+    "scale_factor_exponent": 10.0
+}
