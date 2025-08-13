@@ -1,0 +1,58 @@
+# Earthquake Prediction Project Configuration
+
+# Paths configuration
+paths:
+  combined_stream_dir: "/home/gridsan/mknuth/01_Seismic_Wave_Data_Prediction/01_Data/01_Seismic_Wave_Data/Combined_Processed_Streams_30_new_2025_07_28"
+  earthquake_parquet: "/home/gridsan/mknuth/01_Seismic_Wave_Data_Prediction/01_Data/02_Seismic_Event_Data/earthquake_features.parquet"
+  pretrained_seislm_model: "/home/gridsan/mknuth/01_Seismic_Wave_Data_Prediction/02_Functions/seisLM/results/models/pretrained_seislm_base/checkpoints/epoch=39-step=1203000.ckpt"
+  output_dir: "/home/gridsan/mknuth/01_Seismic_Wave_Data_Prediction/03_Results"
+
+# Data configuration
+data:
+  window_size_days: 0.04166666666666666 #0.04166666666666666
+  shuffle_data: True
+  use_tabular_features: False  # Set to true if using tabular features
+  tabular_features_dim: 10  # Set to the number of tabular features you have
+  downsampling_rate: 16
+
+  # Model configuration
+model:
+  model_type: "seislm"  # Options: "seislm" or "scattering"
+  aggregation_type: "lstm"  # Options: "toto", "lstm", "transformer", "mean", "max", "attention"
+  toto:
+    regime: partial              #  head | partial | full
+    pretrained_name: /home/gridsan/mknuth/Toto-Open-Base-1.0
+  freeze_backbone: True
+  use_multi_gpu: True
+  num_classes: 4
+  class_names:
+    - "Low (< 1.5)"
+    - "Moderate (1.5–2.5)"
+    - "High (2.5–3.5)"
+    - "Very High (> 3.5)"
+    
+
+# Training configuration
+training:
+  num_epochs: 2
+  batch_size: 1
+  learning_rate: 0.0005 #0.0005 , 0.0001
+  weight_decay: 0.00001
+  grad_clip: 1.0
+  use_mixed_precision: True
+  log_interval: 5
+  checkpoint_interval: 1
+  memory_monitoring: True
+  scheduler:
+    type: "reduce_on_plateau"  # Options: "reduce_on_plateau", "cosine", "step"
+    patience: 2
+    factor: 0.5
+    mode: "min"  # "min" for loss, "max" for metrics like accuracy
+
+# Evaluation configuration
+evaluation:
+  metrics: ["accuracy", "precision", "recall", "f1", "confusion_matrix", "roc_auc"]
+  save_results: True
+  normalize_confusion_matrix: False
+  class_specific_evaluation: True
+  visualize: True

@@ -1,0 +1,29 @@
+features_config:
+  # Path to the raw data (downloaded in the previous step).
+  input_data_path: "../../../data/raw/earthquake_data.parquet"
+
+  # Where to save the feature table
+  output_data_path: "../../../data/features/earthquake_features.parquet"
+
+  # Feature engineering parameters
+  feature_params:
+    rolling_depth_window: 5        # Rolling window of 5 events for depth mean
+    b_value_window: 50             # Number of events to consider when computing b-value
+    rolling_count_window: "30d"    # Rolling time window for counting events
+    rolling_mag_stats_window: "7d" # Rolling time window for max magnitude, etc.
+    station_proximity_km: 50       # Distance threshold (km) for filtering earthquakes near the station
+
+  # ETAS parameters (based on seismological models)
+  etas_params:
+    mu: 0.01                       # Background seismicity rate
+    K: 0.005                       # Productivity scaling constant
+    alpha: 1.1                     # Magnitude-dependent factor
+    M0: 2.0                        # Reference magnitude threshold
+    c: 0.01                        # Time shift parameter to avoid singularities
+    p: 1.1                         # Temporal decay parameter
+    sigma: 10.0                    # Spatial decay factor (km)
+
+  # Target creation parameters
+  target_params:
+    next_days_for_target: 30        # Look-ahead window (days) for max magnitude prediction
+    magnitude_bin_edges: [1, 2, 3, 4, 5, 6, 7, 8, 9] # Define magnitude bins for multi-class classification

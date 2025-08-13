@@ -1,0 +1,51 @@
+data:
+  shuffle_data: true
+  tabular_features_dim: 10
+  use_tabular_features: false
+  window_size_days: 0.08
+evaluation:
+  class_specific_evaluation: true
+  metrics:
+  - accuracy
+  - precision
+  - recall
+  - f1
+  - confusion_matrix
+  - roc_auc
+  normalize_confusion_matrix: false
+  save_results: true
+  visualize: true
+model:
+  aggregation_type: lstm
+  class_names:
+  - Low (< 1.5)
+  - "Moderate (1.5\u20132.5)"
+  - "High (2.5\u20133.5)"
+  - Very High (> 3.5)
+  freeze_backbone: true
+  model_type: seislm
+  num_classes: 4
+  toto:
+    pretrained_name: /home/gridsan/mknuth/Toto-Open-Base-1.0
+    regime: head
+  use_multi_gpu: true
+paths:
+  combined_stream_dir: /home/gridsan/mknuth/01_Seismic_Wave_Data_Prediction/01_Data/01_Seismic_Wave_Data/Combined_Processed_Streams_30_new
+  earthquake_parquet: /home/gridsan/mknuth/01_Seismic_Wave_Data_Prediction/01_Data/02_Seismic_Event_Data/earthquake_features.parquet
+  output_dir: /home/gridsan/mknuth/01_Seismic_Wave_Data_Prediction/03_Results
+  pretrained_seislm_model: /home/gridsan/mknuth/01_Seismic_Wave_Data_Prediction/02_Functions/seisLM/results/models/pretrained_seislm_base/checkpoints/epoch=39-step=1203000.ckpt
+training:
+  batch_size: 1
+  checkpoint_interval: 1
+  grad_clip: 1.0
+  learning_rate: 0.0005
+  log_interval: 5
+  memory_monitoring: true
+  num_epochs: 6
+  scheduler:
+    factor: 0.5
+    mode: min
+    patience: 2
+    type: reduce_on_plateau
+  use_mixed_precision: true
+  weight_decay: 1.0e-05
