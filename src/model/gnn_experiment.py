@@ -19,6 +19,19 @@ import src.model.utils.gnn_helper as gh
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+# Set random seeds for reproducibility (same as hyperparameter tuning script)
+RANDOM_SEED = 42
+torch.manual_seed(RANDOM_SEED)
+torch.cuda.manual_seed(RANDOM_SEED)
+torch.cuda.manual_seed_all(RANDOM_SEED)
+np.random.seed(RANDOM_SEED)
+import random
+random.seed(RANDOM_SEED)
+
+# Force CUDA to be deterministic for reproducible results
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
+
 
 class StationGNN(torch.nn.Module):
     def __init__(self, in_dim: int, hidden=128, n_layers=3, n_classes=4):
