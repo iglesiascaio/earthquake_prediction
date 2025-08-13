@@ -69,7 +69,8 @@ def load_station_metadata(meta_path: str) -> pd.DataFrame:
 # ==========================================================
 class EarthquakeGraphDataset(Dataset):
     """
-    One Data object per calendar day; node order follows `meta.node_index`.
+    One Data object per calendar day.
+    Node features = [prev-day features, current-day features].
     """
 
     def __init__(
@@ -92,43 +93,49 @@ class EarthquakeGraphDataset(Dataset):
         self.code2idx = dict(zip(self.meta.station_code, self.meta.node_index))
         self.N = len(self.meta)
 
-    # ------------------------------------------------------ #
     def __len__(self) -> int:
         return len(self.dates)
 
+    # ------------- helper ---------------------------------
     def _standardise(self, a: np.ndarray) -> np.ndarray:
         return (a - self.mu) / self.sig
 
+    # ------------- main loader -----------------------------
     def __getitem__(self, idx: int) -> Data:
-        day_rows = self.df[self.df.date == self.dates[idx]]
+        date_t = self.dates[idx]
+        date_t1 = date_t - pd.Timedelta(days=1)
 
-        # initialize node features/labels with median / -1
-        x = np.tile(self.med, (self.N, 1)).astype(np.float32)
+        rows_t = self.df[self.df.date == date_t]
+        rows_t1 = self.df[self.df.date == date_t1]
+
+        F = len(self.feats)  # features per timestep
+        x = np.tile(self.med, (self.N, 1)).astype(np.float32)  # (N, 2F)
         y = np.full(self.N, -1, dtype=np.int64)
-
-        # substitute actual features/labels where available
-        for _, r in day_rows.iterrows():
+        # ---------- fill t-1 --------------------------------
+        for _, r in rows_t1.iterrows():
             j = self.code2idx.get(r.station_code, None)
-            if j is None:
-                continue
-            x[j] = r[self.feats].astype(np.float32).values
-            y[j] = int(r[self.tgt])
+            if j is not None:
+                x[j, :F] = r[self.feats].astype(np.float32).values
+        # ---------- fill t (current) ------------------------
+        for _, r in rows_t.iterrows():
+            j = self.code2idx.get(r.station_code, None)
+            if j is not None:
+                x[j, F:] = r[self.feats].astype(np.float32).values
+                y[j] = int(r[self.tgt])
 
-        # impute any remaining NaNs with median; standardise
+        # ---------- impute & standardise --------------------
         x = np.where(np.isnan(x), self.med, x)
         x = self._standardise(x)
 
-        # impute missing labels with mode
-        if (y == -1).any():
+        if (y == -1).any():  # fallback for missing labels
             mode = int(np.bincount(y[y != -1]).argmax())
             y[y == -1] = mode
 
-        # return single graph in expected format
         return Data(
             x=torch.from_numpy(x),
             edge_index=self.edge_index,
             y=torch.from_numpy(y),
-            date=str(self.dates[idx].date()),
+            date=str(date_t.date()),
         )
 
 
@@ -147,9 +154,15 @@ def split_dates(df: pd.DataFrame, cutoff: str = "2024-01-01"):
 def normalisation_stats(
     df_train: pd.DataFrame, feature_cols: List[str]
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-    med = df_train[feature_cols].median().astype(np.float32).values
-    mu = df_train[feature_cols].mean().astype(np.float32).values
-    sig = df_train[feature_cols].std(ddof=0).replace(0, 1).astype(np.float32).values
+    """Stats computed on *train* dates, duplicated for t-1 and t."""
+    med_ = df_train[feature_cols].median().astype(np.float32).values
+    mu_ = df_train[feature_cols].mean().astype(np.float32).values
+    sig_ = df_train[feature_cols].std(ddof=0).replace(0, 1).astype(np.float32).values
+
+    # concatenate so shapes match the new (2 × F) feature vectors
+    med = np.concatenate([med_, med_])
+    mu = np.concatenate([mu_, mu_])
+    sig = np.concatenate([sig_, sig_])
     return med, mu, sig
 
 

@@ -39,10 +39,85 @@ class StationGNN(torch.nn.Module):
         return self.head(x)
 
 
+from torch_geometric.nn import GATConv  # ← new import
+
+
+class StationGAT(torch.nn.Module):
+    """
+    3-layer Graph Attention Network for node-wise classification
+    (earthquake-risk classes per station–day).
+
+    Args
+    ----
+    in_dim   : input feature size per node
+    hidden   : hidden size per attention head
+    n_layers : total graph layers (≥ 2)
+    n_heads  : # attention heads per layer
+    n_classes: # target classes
+    """
+
+    def __init__(
+        self,
+        in_dim: int,
+        hidden: int = 128,
+        n_layers: int = 3,
+        n_heads: int = 4,
+        n_classes: int = 4,
+    ):
+        super().__init__()
+
+        assert n_layers >= 2, "Need at least 2 GAT layers"
+
+        # First layer: in_dim → hidden
+        self.convs = torch.nn.ModuleList(
+            [
+                GATConv(
+                    in_dim,
+                    hidden,
+                    heads=n_heads,
+                    concat=True,  # output dim = hidden * n_heads
+                    dropout=0.1,
+                )
+            ]
+        )
+
+        # Middle layers keep same hidden size
+        for _ in range(n_layers - 2):
+            self.convs.append(
+                GATConv(
+                    hidden * n_heads, hidden, heads=n_heads, concat=True, dropout=0.1
+                )
+            )
+
+        # Last GAT layer keeps dimension but no head concatenation
+        self.convs.append(
+            GATConv(
+                hidden * n_heads,
+                hidden,
+                heads=1,  # heads=1 → output dim = hidden
+                concat=False,
+                dropout=0.1,
+            )
+        )
+
+        # ---------- MLP head ----------
+        self.head = torch.nn.Sequential(
+            torch.nn.Linear(hidden, hidden // 2),
+            torch.nn.ReLU(),
+            torch.nn.Linear(hidden // 2, n_classes),
+        )
+
+    def forward(self, data):
+        x, edge = data.x, data.edge_index
+        for conv in self.convs:
+            x = torch.relu(conv(x, edge))
+        return self.head(x)
+
+
 # ------------------ CONFIG ------------------ #
 DATA = {
     "daily": "./data/features/earthquake_features.parquet",
-    "seismic": "./data/embeddings/embeddings_134720.pkl",
+    "seismic": "./data/embeddings/Embeddings_192142.pkl",
     "meta": "./data/raw/earthquake_data.parquet",
 }
 TOP_FEATS = [
@@ -56,7 +131,7 @@ TOP_FEATS = [
     "daily_count_7d_sum",
 ]
 CUT = "2024-01-01"
-BATCH, EPOCHS, LR, HID, RADIUS = 16, 60, 5e-3, 16, 100.0
+BATCH, EPOCHS, LR, HID, RADIUS = 16, 60, 1e-3, 16, 100.0
 RUN_DIR = Path("results") / f"gnn_{datetime.now():%Y-%m-%d_%H-%M-%S}"
 RUN_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -64,12 +139,15 @@ RUN_DIR.mkdir(parents=True, exist_ok=True)
 _, _, _, _, df_full = load_and_split_data(
     DATA["daily"],
     DATA["seismic"],
-    select_top_feats=False,
+    select_top_feats=True,
     top_features=TOP_FEATS,
-    merge_embeddings=False,
+    merge_embeddings=True,
     keep_embeddings=False,
     cutoff_date=CUT,
 )
+
+print(df_full.head())
+print(df_full.station_code.unique())
 FEATS = TOP_FEATS + [c for c in df_full.columns if c.startswith("emb_")]
 
 # ---------- 2. graph construction ---------------------- #
@@ -82,7 +160,11 @@ dl_tr, dl_te, C, *_ = gh.make_dataloaders(
 )
 
 # ---------- 3. model & optimiser ----------------------- #
-model = StationGNN(len(FEATS), hidden=HID, n_layers=3, n_classes=C).to(DEVICE)
+model = StationGNN(len(FEATS) * 2, hidden=HID, n_layers=3, n_classes=C).to(DEVICE)
+# model = StationGAT(
+#     len(FEATS) * 2, hidden=HID, n_layers=3, n_heads=4, n_classes=C  # tweakable
+# ).to(DEVICE)
+
 optim = torch.optim.Adam(model.parameters(), lr=LR)
 loss_fn = torch.nn.CrossEntropyLoss()
 
