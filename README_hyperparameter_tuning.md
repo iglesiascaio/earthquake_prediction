@@ -38,9 +38,8 @@ TEST_MODE = True  # Change to False for full 25-model run
 
 ## Files
 
-- **`gnn_hyperparameter_tuning.py`**: Main Python script
+- **`gnn_hyperparameter_tuning.py`**: Main Python script with all configuration
 - **`gnn_hyperparameter_tuning.sh`**: SLURM job submission script
-- **`gnn_hyperparameter_tuning_config.yaml`**: Configuration file
 - **`README_hyperparameter_tuning.md`**: This file
 
 ## Usage
@@ -93,12 +92,39 @@ Each result contains:
 
 ## Configuration
 
-Edit `gnn_hyperparameter_tuning_config.yaml` to adjust:
-- Test mode (quick testing vs full run)
-- Number of configurations
-- Hyperparameter ranges
-- Data paths
-- Training parameters
+Edit `gnn_hyperparameter_tuning.py` to adjust:
+
+### **Test Mode**
+```python
+# TEST MODE: Set to True for quick testing with only 2 models
+TEST_MODE = True  # Change to False for full 25-model run
+```
+
+### **Data Paths**
+```python
+DATA = {
+    "daily": "./data/features/earthquake_features.parquet",
+    "seismic": "./data/embeddings/Embeddings_192142.pkl",
+    "meta": "./data/raw/earthquake_data.parquet",
+}
+```
+
+### **Training Parameters**
+```python
+CUT = "2024-01-01"      # Cutoff date for train/test split
+RADIUS = 100.0          # Graph construction radius (km)
+EPOCHS = 60             # Maximum training epochs
+PATIENCE = 12           # Early stopping patience
+```
+
+### **Feature Selection**
+```python
+TOP_FEATS = [
+    "time_since_class_3", "rolling_T_value", "daily_count_30d_sum",
+    "daily_b_value", "rolling_dE_half", "daily_etas_intensity",
+    "time_since_class_2", "daily_count_7d_sum",
+]
+```
 
 ## Key Features
 
