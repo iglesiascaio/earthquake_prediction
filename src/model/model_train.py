@@ -87,11 +87,11 @@ RUN_DIR.mkdir(parents=True, exist_ok=True)
 
 X_train, X_test, y_train, y_test, _ = load_and_split_data(
     daily_path="./data/features/earthquake_features.parquet",
-    seismic_path="./data/embeddings/embeddings_190102.pkl",
-    drop_sparse=True,
-    sparse_thresh=0.5,
-    drop_list_cols=True,
-    select_top_feats=True,
+    seismic_path="./data/embeddings/Embeddings_192142.pkl",
+    # drop_sparse=True,
+    # sparse_thresh=0.5,
+    # drop_list_cols=True,
+    select_top_feats=False,
     top_features=TOP_FEATURES,
     merge_embeddings=True,
     keep_embeddings=True,
