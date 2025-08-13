@@ -223,3 +223,12 @@ cython_debug/
 *.h5
 *.parquet
 *.mseed
+*.safetensors
+*.pth
+*.pt
+*.ckpt
+*.parquet
+*.mseed
+*.h5
+*.npy
+*.npz
