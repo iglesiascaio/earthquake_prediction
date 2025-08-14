@@ -21,33 +21,33 @@ The system combines these approaches to enhance predictive robustness and accura
 │                           EARTHQUAKE PREDICTION PIPELINE                    │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
-│  ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────────────┐ │
-│  │   WAVEFORM      │    │    TABULAR      │    │     PREDICTION          │ │
-│  │   PIPELINE      │    │    PIPELINE     │    │     SYSTEM              │ │
-│  │                 │    │                 │    │                         │ │
-│  │ • 30-day 3-comp│     │ • Earthquake    │    │ • Multi-class          │ │
-│  │   waveforms     │    │   catalogs      │    │   classification       │ │
-│  │ • SeisLM        │    │ • Rolling       │    │ • Magnitude bins       │ │
-│  │   embeddings    │    │   features      │    │ • 30-day horizon       │ │
-│  │ • LSTM/Toto     │    │ • ETAS, B-values│    │ • Hybrid fusion        │ │
-│  │   aggregation   │    │ • Energy stats  │    │                         │ │
-│  └─────────────────┘    └─────────────────┘    └─────────────────────────┘ │
+│  ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────────────┐  │
+│  │   WAVEFORM      │    │    TABULAR      │    │     PREDICTION          │  │
+│  │   PIPELINE      │    │    PIPELINE     │    │     SYSTEM              │  │
+│  │                 │    │                 │    │                         │  │
+│  │ • 30-day 3-comp │     │ • Earthquake   │    │ • Multi-class           │  │
+│  │   waveforms     │    │   catalogs      │    │   classification        │  │
+│  │ • SeisLM        │    │ • Rolling       │    │ • Magnitude bins        │  │
+│  │   embeddings    │    │   features      │    │ • 30-day horizon        │  │
+│  │ • LSTM/Toto     │    │ • ETAS, B-values│    │ • Hybrid fusion         │  │
+│  │   aggregation   │    │ • Energy stats  │    │                         │  │
+│  └─────────────────┘    └─────────────────┘    └─────────────────────────┘  │
 │           │                       │                       │                 │
 │           └───────────────────────┼───────────────────────┘                 │
-│                                   │                                       │
-│  ┌─────────────────────────────────────────────────────────────────────┐   │
-│  │                    FEATURE FUSION & MODELING                        │   │
-│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────────┐ │   │
-│  │  │  Gradient   │  │    GNN      │  │      Evaluation &           │ │   │
-│  │  │  Boosting   │  │  (GAT/SAGE) │  │      Deployment             │ │   │
-│  │  │             │  │             │  │                             │ │   │
-│  │  │ • LightGBM  │  │ • Spatial   │  │ • Multi-metric              │ │   │
-│  │  │ • Tabular   │  │   awareness  │  │   assessment                │ │   │
-│  │  │ • Efficient │  │ • Station   │  │ • ROC-AUC, Accuracy         │ │   │
-│  │  │             │  │   networks  │  │ • Confusion matrices        │ │   │
-│  │  └─────────────┘  └─────────────┘  └─────────────────────────────┘ │   │
-│  └─────────────────────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────────────────────┘
+│                                   │                                         │
+│  ┌─────────────────────────────────────────────────────────────────────┐    │
+│  │                    FEATURE FUSION & MODELING                        │    │
+│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────────┐  │    │
+│  │  │  Gradient   │  │    GNN      │  │      Evaluation &           │  │    │
+│  │  │  Boosting   │  │  (GAT/SAGE) │  │      Deployment             │  │    │
+│  │  │             │  │             │  │                             │  │    │
+│  │  │ • LightGBM  │  │ • Spatial   │  │ • Multi-metric              │  │    │
+│  │  │ • Tabular   │  │   awareness │  │   assessment                │  │    │
+│  │  │ • Efficient │  │ • Station   │  │ • ROC-AUC, Accuracy         │  │    │
+│  │  │             │  │   networks  │  │ • Confusion matrices        │  │    │
+│  │  └─────────────┘  └─────────────┘  └─────────────────────────────┘  │    │
+│  └────────────────────────────────────────────────────────────────────-┘    │
+└────────────────────────────────────────────────────────────────────────────-┘
 ```
 
 ## 🎯 Research Objectives
