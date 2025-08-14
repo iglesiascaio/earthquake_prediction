@@ -527,14 +527,23 @@ def main():
                     import io
                     import sys
                     
+                    # Create scenario-specific directory for evaluation files
+                    # Include config_id to avoid overwriting between different configurations
+                    scenario_dir = results_dir / f"{hp_config['config_id']}_{scenario_name}"
+                    scenario_dir.mkdir(exist_ok=True)
+                    print(f"  📁 Evaluation files will be saved to: {scenario_dir}")
+                    
                     # Capture stdout from evaluate function
                     old_stdout = sys.stdout
-                    sys.stdout = io.StringIO()
                     
-                    evaluate(log_tr.argmax(1), log_tr, pd.DataFrame(), y_tr, "Train", results_dir)
+                    # Evaluate training data
+                    sys.stdout = io.StringIO()
+                    evaluate(log_tr.argmax(1), log_tr, pd.DataFrame(), y_tr, "Train", scenario_dir)
                     train_output = sys.stdout.getvalue()
                     
-                    evaluate(log_te.argmax(1), log_te, pd.DataFrame(), y_te, "Test", results_dir)
+                    # Evaluate test data (reset StringIO buffer)
+                    sys.stdout = io.StringIO()
+                    evaluate(log_te.argmax(1), log_te, pd.DataFrame(), y_te, "Test", scenario_dir)
                     test_output = sys.stdout.getvalue()
                     
                     # Restore stdout
@@ -561,9 +570,9 @@ def main():
                     
                     metrics = {
                         'train_accuracy': train_acc,
-                        'val_accuracy': test_acc,
+                        'test_accuracy': test_acc,  # Consistent naming
                         'train_auc': train_auc,
-                        'val_auc': test_auc
+                        'test_auc': test_auc        # Consistent naming
                     }
                     
                     # Store results as a flat dictionary for CSV
@@ -580,8 +589,8 @@ def main():
                         # Main metrics (what you care about most)
                         "train_accuracy": metrics['train_accuracy'],
                         "train_auc": metrics['train_auc'],
-                        "test_accuracy": metrics['val_accuracy'],  # Renamed for clarity
-                        "test_auc": metrics['val_auc'],           # Renamed for clarity
+                        "test_accuracy": metrics['test_accuracy'],  # Consistent naming
+                        "test_auc": metrics['test_auc'],           # Consistent naming
                         # Additional metrics
                         "best_val_loss": best_loss,
                         "training_time": training_time,
@@ -599,8 +608,8 @@ def main():
                     df_partial.to_csv(partial_results_file, index=False)
                     
                     print(f"✅ Completed: {scenario_name}")
-                    print(f"   Train Acc: {metrics['train_accuracy']:.4f}, Val Acc: {metrics['val_accuracy']:.4f}")
-                    print(f"   Train AUC: {metrics['train_auc']:.4f}, Val AUC: {metrics['val_auc']:.4f}")
+                    print(f"   Train Acc: {metrics['train_accuracy']:.4f}, Test Acc: {metrics['test_accuracy']:.4f}")
+                    print(f"   Train AUC: {metrics['train_auc']:.4f}, Test AUC: {metrics['test_auc']:.4f}")
                     print(f"   Best Val Loss: {best_loss:.4f}")
                     print(f"   Training Time: {training_time:.1f}s")
                     
@@ -678,6 +687,19 @@ def main():
     print(f"\nConfiguration saved to: {results_dir}/experiment_config.json")
     print(f"Partial results saved to: {results_dir}/partial_results.csv")
     print(f"Final results saved to: {results_dir}/final_results.csv")
+    
+    # Show directory structure
+    print(f"\n📁 Directory structure created:")
+    print(f"  {results_dir}/")
+    print(f"  ├── experiment_config.json")
+    print(f"  ├── partial_results.csv")
+    print(f"  ├── final_results.csv")
+    print(f"  └── [config_id]_[scenario_name]/")
+    print(f"      ├── metrics_Train.txt")
+    print(f"      ├── metrics_Test.txt")
+    print(f"      ├── roc_Train.png")
+    print(f"      ├── roc_Test.png")
+    print(f"      └── [other evaluation files]")
 
 
 if __name__ == "__main__":
