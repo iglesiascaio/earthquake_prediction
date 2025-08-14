@@ -1,0 +1,3 @@
+config_id,model_type,scenario,hidden,n_layers,lr,batch_size,dropout,n_heads,train_accuracy,train_auc,test_accuracy,test_auc,best_val_loss,training_time,n_features,n_classes,n_train_samples,n_val_samples,timestamp
+baseline,StationGNN,no_embeddings_limited_data,16,3,0.001,16,0.1,,0.7212,0.6042,0.6268,0.5361,1.0771169341527498,39.62076544761658,8,5,222,52,2025-08-12T23:40:44.129643
+baseline,StationGNN,embeddings_limited_data,16,3,0.001,16,0.1,,0.7216,0.7091,0.6264,0.5928,1.064586102962494,73.81774497032166,264,5,222,52,2025-08-12T23:42:02.951479

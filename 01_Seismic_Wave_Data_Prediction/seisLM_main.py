@@ -163,7 +163,7 @@ def main():
 
     
 def only_evaluate():
-    checkpoint_path= '/home/gridsan/mknuth/01_Seismic_Wave_Data_Prediction/03_Results/seislm_lstm_20250804_215449/checkpoints/checkpoint_epoch2.pth'
+    checkpoint_path= '/home/gridsan/mknuth/01_Seismic_Wave_Data_Prediction/03_Results/seislm_toto_20250807_114200/checkpoints/checkpoint_epoch1.pth'
     args = parse_args_jupyter_safe()
 
     config = load_config(args.config)
@@ -191,7 +191,8 @@ def only_evaluate():
             window_size_days=config['data']['window_size_days'],
             batch_size=config['training']['batch_size'],
             shuffle=True,
-            use_tabular_features=use_tabular_features
+            use_tabular_features=use_tabular_features,
+            downsampling_rate = config['data']['downsampling_rate']
         )     
     # Setup evaluator
     evaluator = ModelEvaluator(

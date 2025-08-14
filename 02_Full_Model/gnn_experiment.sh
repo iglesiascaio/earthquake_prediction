@@ -7,5 +7,5 @@
 module load anaconda/Python-ML-2025a
 
 # Run the Python download script
-python gnn_experiment.py
+python -m src.model.gnn_experiment
 

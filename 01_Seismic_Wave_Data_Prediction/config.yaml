@@ -2,7 +2,7 @@
 
 # Paths configuration
 paths:
-  combined_stream_dir: "/home/gridsan/mknuth/01_Seismic_Wave_Data_Prediction/01_Data/01_Seismic_Wave_Data/Combined_Processed_Streams_30_new_2025_07_28"
+  combined_stream_dir: "/home/gridsan/mknuth/01_Seismic_Wave_Data_Prediction/01_Data/01_Seismic_Wave_Data/Combined_Processed_Streams_50_new_2025_07_28"
   earthquake_parquet: "/home/gridsan/mknuth/01_Seismic_Wave_Data_Prediction/01_Data/02_Seismic_Event_Data/earthquake_features.parquet"
   pretrained_seislm_model: "/home/gridsan/mknuth/01_Seismic_Wave_Data_Prediction/02_Functions/seisLM/results/models/pretrained_seislm_base/checkpoints/epoch=39-step=1203000.ckpt"
   output_dir: "/home/gridsan/mknuth/01_Seismic_Wave_Data_Prediction/03_Results"
@@ -18,7 +18,7 @@ data:
   # Model configuration
 model:
   model_type: "seislm"  # Options: "seislm" or "scattering"
-  aggregation_type: "lstm"  # Options: "toto", "lstm", "transformer", "mean", "max", "attention"
+  aggregation_type: "toto"  # Options: "toto", "lstm", "transformer", "mean", "max", "attention"
   toto:
     regime: partial              #  head | partial | full
     pretrained_name: /home/gridsan/mknuth/Toto-Open-Base-1.0
@@ -34,7 +34,7 @@ model:
 
 # Training configuration
 training:
-  num_epochs: 2
+  num_epochs: 1
   batch_size: 1
   learning_rate: 0.0005 #0.0005 , 0.0001
   weight_decay: 0.00001
