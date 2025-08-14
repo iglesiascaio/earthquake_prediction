@@ -165,15 +165,13 @@ earthquake-ai/
 - **Coverage**: 25+ broadband stations, 3 components (BHZ, BHE, BHN)
 - **Format**: MiniSEED files with continuous recordings
 
-#### **Preprocessing Pipeline**
-```python
-# Waveform processing steps
-1. Gap detection and zero-filling
-2. Multi-trace merging for 24-hour coverage
-3. Downsampling (factor 16) for computational efficiency
-4. Multi-day stream creation with sliding windows
-5. Normalization (zero-mean, unit variance)
-```
+
+#### **Waveform Preprocessing Pipeline**
+- **`process_waveforms.ipynb`**: Main preprocessing workflow for all daily waveforms of stations
+- **`merge_waveform_streams.py`**: Utility for combining daily waveform files to multiple day waveforms
+- **Station-Specific Analysis**: Individual notebooks for each seismic station
+- **Data Quality Control**: Gap detection, zero-filling, and validation
+- **Multi-Day Streams**: Configurable windowing for temporal analysis
 
 #### **SeisLM Integration**
 - **Foundation Model**: Pre-trained SeisLM with frozen backbone (130MB checkpoint)
@@ -181,13 +179,6 @@ earthquake-ai/
 - **Aggregation**: Multiple temporal aggregation strategies:
   - **LSTM + Attention**: Sequential processing with learned weighting
   - **Toto Head**: Transformer-based foundation model integration
-- **Package Structure**: Complete SeisLM implementation with:
-  - **Model Implementations**: Foundation models, task-specific variants
-  - **Data Pipeline**: Foreshock/aftershock, phase picking, pre-training
-  - **Configuration System**: YAML-based configs for all tasks
-  - **Evaluation Tools**: Analysis utilities, phase picking evaluation
-  - **Example Notebooks**: Classification demos, feature visualization
-  - **Development Tools**: Linting, type checking, pre-commit hooks
 
 #### **Embedding Generation and Storage**
 - **`seisLM_main.py`**: Creates SeisLM embeddings from seismic waveforms
@@ -196,12 +187,7 @@ earthquake-ai/
 - **Baseline Results**: Establishes performance benchmark using only waveform embeddings
 - **Reusable Features**: Embeddings can be loaded for different downstream tasks
 
-#### **Waveform Preprocessing Pipeline**
-- **`process_waveforms.ipynb`**: Main preprocessing workflow for all stations
-- **`merge_waveform_streams.py`**: Utility for combining daily waveform files
-- **Station-Specific Analysis**: Individual notebooks for each seismic station
-- **Data Quality Control**: Gap detection, zero-filling, and validation
-- **Multi-Day Streams**: Configurable windowing for temporal analysis
+
 
 ### 2. Tabular Feature Engineering (`02_Full_Model/`)
 
@@ -260,31 +246,6 @@ earthquake-ai/
 - **Graph Neural Networks**: Spatial-aware station modeling
 - **Ensemble Methods**: Combining multiple approaches
 
-## 🧪 Testing and Validation
-
-### **Comprehensive Testing Suite**
-- **`TESTING.ipynb`**: Main testing notebook with dataset validation
-- **`seisLM_main_new.ipynb`**: Alternative implementation for experimentation
-- **SLURM Output Logs**: Extensive logging for all experiments and debugging
-  - **`slurm-*.out`**: Detailed execution logs for all SLURM jobs
-  - **`slurm-2074349.out`**: Large-scale experiment outputs (1.3MB+)
-  - **`slurm-1884837.out`**: Comprehensive hyperparameter tuning results (11MB+)
-  - **`slurm-1827746.out`**: Additional experiment outputs (2.7MB+)
-  - **`slurm-1829064.out`**: Experiment results (2.1MB+)
-- **Data Quality Checks**: Validation of waveform processing and feature extraction
-
-### **Experiment Results Archive**
-- **90+ Experiment Directories**: Timestamped results from all model runs
-- **SeisLM + Toto Results**: 50+ experiments with Toto aggregation
-- **SeisLM + LSTM Results**: 40+ experiments with LSTM aggregation
-- **Comprehensive Logging**: All experiments logged with detailed outputs
-
-### **Validation Workflows**
-- **Waveform Processing**: Gap detection, merging, and quality assessment
-- **Feature Engineering**: Validation of seismological feature calculations
-- **Model Performance**: Cross-validation and holdout testing
-- **Reproducibility**: Version-controlled experiments with detailed logging
-
 ## 🚀 Quick Start
 
 ### 1. Environment Setup
@@ -300,13 +261,6 @@ conda activate toto-310
 # Install dependencies from requirements.txt
 pip install -r requirements.txt
 ```
-
-**Note**: The `requirements.txt` includes all necessary dependencies:
-- **Deep Learning**: PyTorch 2.7.0, Lightning 2.1.4, Transformers 4.50.0
-- **Seismic Processing**: ObsPy 1.4.0, SeisBench 0.6.0
-- **Data Science**: NumPy 1.26.4, Pandas 2.2.3, Scikit-learn 1.5.0
-- **Foundation Models**: Toto (from GitHub), SeisLM integration
-- **HPC Tools**: SLURM job scripts, distributed training support
 
 ### 2. Configuration
 
@@ -471,95 +425,6 @@ python -c "import json; print(json.dumps(json.load(open('final_results.json')), 
 - **SeisLM**: [Foundation Model for Seismic Waveforms](https://arxiv.org/abs/2410.15765)
 - **Toto**: [Time Series Optimized Transformer](https://arxiv.org/abs/2505.14766)
 - **SCEDC**: [Southern California Earthquake Data Center](https://scedc.caltech.edu/)
-
-## 🛠️ Data Processing Utilities
-
-### **Waveform Processing Scripts**
-- **`merge_waveform_streams.sh`**: Shell script for batch waveform merging
-- **`merge_waveform_streams.py`**: Python implementation with error handling
-- **`process_waveforms.ipynb`**: Interactive preprocessing workflow
-
-### **Data Download Pipeline**
-The system downloads daily seismic waveforms from the SCEDC (Southern California Earthquake Data Center) S3 bucket. Here's the core download code:
-
-```python
-import os
-import boto3
-from botocore import UNSIGNED
-from botocore.config import Config
-from obspy import UTCDateTime
-
-# Configuration
-bucket_name = "scedc-pds"
-station = "JVA"
-channels = ["BHZ", "BHE", "BHN"]
-#channels = ["BHE"]
-year = 2020
-base_dir = f"01_Data/01_Seismic_Wave_Data/{station}_BB_{year}_s3"
-
-# S3 client (unsigned access)
-s3 = boto3.resource("s3", config=Config(signature_version=UNSIGNED))
-bucket = s3.Bucket(bucket_name)
-
-# Loop through each day and channel
-start_day = UTCDateTime(f"{year}-01-01")
-end_day = UTCDateTime(f"{year}-12-31")
-day = start_day
-print('Start')
-while day <= end_day:
-    jday = f"{day.julday:03d}"
-    date_str = day.strftime("%Y-%m-%d")
-
-    for channel in channels:
-        # Construct S3 key and local path
-        key = f"continuous_waveforms/{year}/{year}_{jday}/CI{station}__{channel}___{year}{jday}.ms"
-        channel_dir = os.path.join(base_dir, channel)
-        os.makedirs(channel_dir, exist_ok=True)
-        filename = f"{station}_{channel}_{date_str}.mseed"
-        local_path = os.path.join(channel_dir, filename)
-
-        try:
-            bucket.download_file(key, local_path)
-            print(f"✅ Saved: {local_path}")
-        except Exception as e:
-            print(f"❌ Failed: {key} — {e}")
-
-    day += 86400  # move to next day
-
-print("🎉 All files downloaded and saved in structured folders.")
-```
-
-**Key Features:**
-- **Unsigned S3 Access**: No AWS credentials required for public SCEDC data
-- **Multi-Channel Support**: Downloads BHZ, BHE, BHN components
-- **Structured Organization**: Creates year/station/channel directory structure
-- **Error Handling**: Graceful failure handling for missing files
-- **Daily Processing**: Downloads complete year of continuous waveforms
-- **MiniSEED Format**: Standard seismic data format (.ms files)
-
-**Workflow Integration:**
-This download code feeds directly into the waveform analysis pipeline:
-1. **Download**: Raw MiniSEED files from SCEDC S3 bucket
-2. **Processing**: `process_waveforms.ipynb` handles gap detection and merging
-3. **Analysis**: Station-specific `*_waveform_analysis.ipynb` notebooks analyze the data
-4. **Feature Extraction**: SeisLM processes the cleaned waveforms into embeddings
-
-### **Earthquake Data Preparation**
-- **`download_data.py`**: Automated FDSN catalog download with chunked processing
-- **`download_data.sh`**: SLURM-compatible download script for cluster execution
-- **`create_features.py`**: Multi-station feature engineering pipeline
-- **Distance Filtering**: Haversine-based proximity calculations (50km radius)
-- **Magnitude Conversion**: ML, Mlr to Local Magnitude standardization
-
-### **Configuration Management**
-- **`config.yaml`**: Main configuration for SeisLM + Toto pipeline
-- **`00-download-config.yaml`**: Data download and retrieval settings
-- **`10-features-config.yaml`**: Feature engineering parameters
-
-### **Environment Management**
-- **`activate`**: Environment activation script for GNN experiments
-- **`requirements.txt`**: Complete dependency specification with versions
-- **`.gitignore`**: Version control patterns for large data files
 
 ## 📞 Contact
 
