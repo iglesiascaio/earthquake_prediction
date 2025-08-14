@@ -264,7 +264,7 @@ def main():
     PATIENCE = 12
     
     # TEST MODE: Set to True for quick testing with only 2 models
-    TEST_MODE = False  # Change to False for full 25-model run
+    TEST_MODE = True  # Change to False for full 25-model run
     
     # Create results directory
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")

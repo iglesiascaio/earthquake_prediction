@@ -4,7 +4,7 @@
 #SBATCH --mem=64G                    # Total memory per node
 
 # Load the required modules
-module load anaconda/Python-ML-2025a
+#module load anaconda/Python-ML-2025a
 
 # Run the Python download script
 python -m src.model.model_train

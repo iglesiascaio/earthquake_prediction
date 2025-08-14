@@ -1,0 +1,24 @@
+{
+  "timestamp": "2025-08-14_15-51-19",
+  "data_paths": {
+    "daily": "./data/features/earthquake_features.parquet",
+    "seismic": "./data/embeddings/Embeddings_192142.pkl",
+    "meta": "./data/raw/earthquake_data.parquet"
+  },
+  "top_features": [
+    "time_since_class_3",
+    "rolling_T_value",
+    "daily_count_30d_sum",
+    "daily_b_value",
+    "rolling_dE_half",
+    "daily_etas_intensity",
+    "time_since_class_2",
+    "daily_count_7d_sum"
+  ],
+  "cutoff_date": "2024-01-01",
+  "radius_km": 100.0,
+  "epochs": 60,
+  "patience": 12,
+  "device": "cpu",
+  "test_mode": true
+}
