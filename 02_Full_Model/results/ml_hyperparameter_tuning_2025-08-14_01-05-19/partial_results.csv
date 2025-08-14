@@ -1,0 +1,98 @@
+scenario,model_name,feature_strategy,embeddings_merge,embeddings_keep,n_features,n_train_samples,n_test_samples,train_accuracy,train_auc,test_accuracy,test_auc,training_time,do_tuning,timestamp,error
+no_embeddings_limited_data_top_features,LGBMClassifier,top_features,True,False,,,,,,,,,True,2025-08-14T01:05:50.027997,"A worker process managed by the executor was unexpectedly terminated. This could be caused by a segmentation fault while calling the function or by an excessive memory usage causing the Operating System to kill the worker.
+
+The exit codes of the workers are {SIGABRT(-6), SIGABRT(-6), SIGABRT(-6), SIGABRT(-6), SIGABRT(-6)}"
+no_embeddings_limited_data_all_features,LGBMClassifier,all_features,True,False,,,,,,,,,True,2025-08-14T01:05:54.666016,"
+All the 300 fits failed.
+It is very likely that your model is misconfigured.
+You can try to debug the error by setting error_score='raise'.
+
+Below are more details about the failures:
+--------------------------------------------------------------------------------
+300 fits failed with the following error:
+Traceback (most recent call last):
+  File ""/state/partition1/llgrid/pkg/anaconda/python-ML-2025a/lib/python3.10/site-packages/sklearn/model_selection/_validation.py"", line 866, in _fit_and_score
+    estimator.fit(X_train, y_train, **fit_params)
+  File ""/state/partition1/llgrid/pkg/anaconda/python-ML-2025a/lib/python3.10/site-packages/sklearn/base.py"", line 1389, in wrapper
+    return fit_method(estimator, *args, **kwargs)
+  File ""/state/partition1/llgrid/pkg/anaconda/python-ML-2025a/lib/python3.10/site-packages/sklearn/pipeline.py"", line 652, in fit
+    Xt = self._fit(X, y, routed_params, raw_params=params)
+  File ""/state/partition1/llgrid/pkg/anaconda/python-ML-2025a/lib/python3.10/site-packages/sklearn/pipeline.py"", line 586, in _fit
+    X, fitted_transformer = fit_transform_one_cached(
+  File ""/state/partition1/llgrid/pkg/anaconda/python-ML-2025a/lib/python3.10/site-packages/joblib/memory.py"", line 312, in __call__
+    return self.func(*args, **kwargs)
+  File ""/state/partition1/llgrid/pkg/anaconda/python-ML-2025a/lib/python3.10/site-packages/sklearn/pipeline.py"", line 1540, in _fit_transform_one
+    res = transformer.fit_transform(X, y, **params.get(""fit_transform"", {}))
+  File ""/state/partition1/llgrid/pkg/anaconda/python-ML-2025a/lib/python3.10/site-packages/sklearn/base.py"", line 1389, in wrapper
+    return fit_method(estimator, *args, **kwargs)
+  File ""/state/partition1/llgrid/pkg/anaconda/python-ML-2025a/lib/python3.10/site-packages/sklearn/pipeline.py"", line 716, in fit_transform
+    Xt = self._fit(X, y, routed_params)
+  File ""/state/partition1/llgrid/pkg/anaconda/python-ML-2025a/lib/python3.10/site-packages/sklearn/pipeline.py"", line 586, in _fit
+    X, fitted_transformer = fit_transform_one_cached(
+  File ""/state/partition1/llgrid/pkg/anaconda/python-ML-2025a/lib/python3.10/site-packages/joblib/memory.py"", line 312, in __call__
+    return self.func(*args, **kwargs)
+  File ""/state/partition1/llgrid/pkg/anaconda/python-ML-2025a/lib/python3.10/site-packages/sklearn/pipeline.py"", line 1540, in _fit_transform_one
+    res = transformer.fit_transform(X, y, **params.get(""fit_transform"", {}))
+  File ""/state/partition1/llgrid/pkg/anaconda/python-ML-2025a/lib/python3.10/site-packages/sklearn/utils/_set_output.py"", line 319, in wrapped
+    data_to_wrap = f(self, X, *args, **kwargs)
+  File ""/state/partition1/llgrid/pkg/anaconda/python-ML-2025a/lib/python3.10/site-packages/sklearn/base.py"", line 921, in fit_transform
+    return self.fit(X, y, **fit_params).transform(X)
+  File ""/state/partition1/llgrid/pkg/anaconda/python-ML-2025a/lib/python3.10/site-packages/sklearn/base.py"", line 1389, in wrapper
+    return fit_method(estimator, *args, **kwargs)
+  File ""/state/partition1/llgrid/pkg/anaconda/python-ML-2025a/lib/python3.10/site-packages/sklearn/impute/_base.py"", line 434, in fit
+    X = self._validate_input(X, in_fit=True)
+  File ""/state/partition1/llgrid/pkg/anaconda/python-ML-2025a/lib/python3.10/site-packages/sklearn/impute/_base.py"", line 361, in _validate_input
+    raise new_ve from None
+ValueError: Cannot use median strategy with non-numeric data:
+could not convert string to float: 'AGM'
+"
+embeddings_limited_data_top_features,LGBMClassifier,top_features,True,True,,,,,,,,,True,2025-08-14T01:06:23.639578,"A worker process managed by the executor was unexpectedly terminated. This could be caused by a segmentation fault while calling the function or by an excessive memory usage causing the Operating System to kill the worker.
+
+The exit codes of the workers are {SIGABRT(-6), SIGABRT(-6), SIGABRT(-6), SIGABRT(-6)}"
+embeddings_limited_data_all_features,LGBMClassifier,all_features,True,True,,,,,,,,,True,2025-08-14T01:06:28.038974,"
+All the 300 fits failed.
+It is very likely that your model is misconfigured.
+You can try to debug the error by setting error_score='raise'.
+
+Below are more details about the failures:
+--------------------------------------------------------------------------------
+300 fits failed with the following error:
+Traceback (most recent call last):
+  File ""/state/partition1/llgrid/pkg/anaconda/python-ML-2025a/lib/python3.10/site-packages/sklearn/model_selection/_validation.py"", line 866, in _fit_and_score
+    estimator.fit(X_train, y_train, **fit_params)
+  File ""/state/partition1/llgrid/pkg/anaconda/python-ML-2025a/lib/python3.10/site-packages/sklearn/base.py"", line 1389, in wrapper
+    return fit_method(estimator, *args, **kwargs)
+  File ""/state/partition1/llgrid/pkg/anaconda/python-ML-2025a/lib/python3.10/site-packages/sklearn/pipeline.py"", line 652, in fit
+    Xt = self._fit(X, y, routed_params, raw_params=params)
+  File ""/state/partition1/llgrid/pkg/anaconda/python-ML-2025a/lib/python3.10/site-packages/sklearn/pipeline.py"", line 586, in _fit
+    X, fitted_transformer = fit_transform_one_cached(
+  File ""/state/partition1/llgrid/pkg/anaconda/python-ML-2025a/lib/python3.10/site-packages/joblib/memory.py"", line 312, in __call__
+    return self.func(*args, **kwargs)
+  File ""/state/partition1/llgrid/pkg/anaconda/python-ML-2025a/lib/python3.10/site-packages/sklearn/pipeline.py"", line 1540, in _fit_transform_one
+    res = transformer.fit_transform(X, y, **params.get(""fit_transform"", {}))
+  File ""/state/partition1/llgrid/pkg/anaconda/python-ML-2025a/lib/python3.10/site-packages/sklearn/base.py"", line 1389, in wrapper
+    return fit_method(estimator, *args, **kwargs)
+  File ""/state/partition1/llgrid/pkg/anaconda/python-ML-2025a/lib/python3.10/site-packages/sklearn/pipeline.py"", line 716, in fit_transform
+    Xt = self._fit(X, y, routed_params)
+  File ""/state/partition1/llgrid/pkg/anaconda/python-ML-2025a/lib/python3.10/site-packages/sklearn/pipeline.py"", line 586, in _fit
+    X, fitted_transformer = fit_transform_one_cached(
+  File ""/state/partition1/llgrid/pkg/anaconda/python-ML-2025a/lib/python3.10/site-packages/joblib/memory.py"", line 312, in __call__
+    return self.func(*args, **kwargs)
+  File ""/state/partition1/llgrid/pkg/anaconda/python-ML-2025a/lib/python3.10/site-packages/sklearn/pipeline.py"", line 1540, in _fit_transform_one
+    res = transformer.fit_transform(X, y, **params.get(""fit_transform"", {}))
+  File ""/state/partition1/llgrid/pkg/anaconda/python-ML-2025a/lib/python3.10/site-packages/sklearn/utils/_set_output.py"", line 319, in wrapped
+    data_to_wrap = f(self, X, *args, **kwargs)
+  File ""/state/partition1/llgrid/pkg/anaconda/python-ML-2025a/lib/python3.10/site-packages/sklearn/base.py"", line 921, in fit_transform
+    return self.fit(X, y, **fit_params).transform(X)
+  File ""/state/partition1/llgrid/pkg/anaconda/python-ML-2025a/lib/python3.10/site-packages/sklearn/base.py"", line 1389, in wrapper
+    return fit_method(estimator, *args, **kwargs)
+  File ""/state/partition1/llgrid/pkg/anaconda/python-ML-2025a/lib/python3.10/site-packages/sklearn/impute/_base.py"", line 434, in fit
+    X = self._validate_input(X, in_fit=True)
+  File ""/state/partition1/llgrid/pkg/anaconda/python-ML-2025a/lib/python3.10/site-packages/sklearn/impute/_base.py"", line 361, in _validate_input
+    raise new_ve from None
+ValueError: Cannot use median strategy with non-numeric data:
+could not convert string to float: 'AGM'
+"
+no_embeddings_full_data_top_features,LGBMClassifier,top_features,False,False,,,,,,,,,True,2025-08-14T01:07:11.426279,"A worker process managed by the executor was unexpectedly terminated. This could be caused by a segmentation fault while calling the function or by an excessive memory usage causing the Operating System to kill the worker.
+
+The exit codes of the workers are {SIGABRT(-6)}"

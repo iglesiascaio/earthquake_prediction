@@ -1,0 +1,7 @@
+scenario,model_name,feature_strategy,embeddings_merge,embeddings_keep,n_features,n_train_samples,n_test_samples,train_accuracy,train_auc,test_accuracy,test_auc,training_time,do_tuning,timestamp,error
+no_embeddings_limited_data_top_features,LGBMClassifier,top_features,True,False,,,,,,,,,True,2025-08-14T01:32:18.670698,name 'feature_cols' is not defined
+no_embeddings_limited_data_all_features,LGBMClassifier,all_features,True,False,,,,,,,,,True,2025-08-14T01:32:19.148602,name 'feature_cols' is not defined
+embeddings_limited_data_top_features,LGBMClassifier,top_features,True,True,,,,,,,,,True,2025-08-14T01:32:19.635719,name 'feature_cols' is not defined
+embeddings_limited_data_all_features,LGBMClassifier,all_features,True,True,,,,,,,,,True,2025-08-14T01:32:20.159343,name 'feature_cols' is not defined
+no_embeddings_full_data_top_features,LGBMClassifier,top_features,False,False,,,,,,,,,True,2025-08-14T01:32:20.433063,name 'feature_cols' is not defined
+no_embeddings_full_data_all_features,LGBMClassifier,all_features,False,False,,,,,,,,,True,2025-08-14T01:32:20.782635,name 'feature_cols' is not defined
