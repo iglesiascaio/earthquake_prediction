@@ -1,0 +1,3 @@
+scenario,model_name,feature_strategy,embeddings_merge,embeddings_keep,n_features,n_train_samples,n_test_samples,train_accuracy,train_auc,test_accuracy,test_auc,training_time,do_tuning,timestamp,error
+no_embeddings_limited_data_top_features,LGBMClassifier,top_features,True,False,,,,,,,,,True,2025-08-14T01:39:25.849732,index 8 is out of bounds for axis 1 with size 8
+no_embeddings_limited_data_all_features,LGBMClassifier,all_features,True,False,31.0,2296.0,895.0,0.676,0.9001,0.5263,0.6774,55.86139702796936,True,2025-08-14T01:40:24.243235,

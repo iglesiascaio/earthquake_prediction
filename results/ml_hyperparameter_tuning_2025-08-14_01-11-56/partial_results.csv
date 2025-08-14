@@ -1,0 +1,7 @@
+scenario,model_name,feature_strategy,embeddings_merge,embeddings_keep,n_features,n_train_samples,n_test_samples,train_accuracy,train_auc,test_accuracy,test_auc,training_time,do_tuning,timestamp
+no_embeddings_limited_data_top_features,LGBMClassifier,top_features,True,False,8,2296,895,0.6725,0.9131,0.5285,0.6563,45.86365795135498,True,2025-08-14T01:12:45.331029
+no_embeddings_limited_data_all_features,LGBMClassifier,all_features,True,False,285,2296,895,0.7461,0.9539,0.5073,0.7237,117.12742853164673,True,2025-08-14T01:14:45.042209
+embeddings_limited_data_top_features,LGBMClassifier,top_features,True,True,264,2296,895,0.7387,0.9527,0.514,0.7285,105.17751884460449,True,2025-08-14T01:16:32.747519
+embeddings_limited_data_all_features,LGBMClassifier,all_features,True,True,285,2296,895,0.7461,0.9539,0.5073,0.7237,121.25416541099548,True,2025-08-14T01:18:36.606316
+no_embeddings_full_data_top_features,LGBMClassifier,top_features,False,False,8,68029,16925,0.6177,0.8589,0.5531,0.5732,201.16533303260803,True,2025-08-14T01:22:01.373552
+no_embeddings_full_data_all_features,LGBMClassifier,all_features,False,False,30,68029,16925,0.8207,0.9796,0.5369,0.5462,271.3426332473755,True,2025-08-14T01:26:36.277162

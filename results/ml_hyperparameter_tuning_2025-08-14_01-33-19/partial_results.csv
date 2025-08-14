@@ -1,0 +1,4 @@
+scenario,model_name,feature_strategy,embeddings_merge,embeddings_keep,n_features,n_train_samples,n_test_samples,train_accuracy,train_auc,test_accuracy,test_auc,training_time,do_tuning,timestamp
+no_embeddings_limited_data_top_features,LGBMClassifier,top_features,True,False,8,2296,895,0.6725,0.9131,0.5285,0.6563,55.682844161987305,True,2025-08-14T01:34:17.780586
+no_embeddings_limited_data_all_features,LGBMClassifier,all_features,True,False,285,2296,895,0.7461,0.9539,0.5073,0.7237,139.019437789917,True,2025-08-14T01:36:39.531009
+embeddings_limited_data_top_features,LGBMClassifier,top_features,True,True,264,2296,895,0.7387,0.9527,0.514,0.7285,130.01928043365479,True,2025-08-14T01:38:52.062865

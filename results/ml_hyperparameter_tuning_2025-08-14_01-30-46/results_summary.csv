@@ -1,0 +1,2 @@
+scenario,model_name,feature_strategy,embeddings_merge,embeddings_keep,n_features,n_train_samples,n_test_samples,train_accuracy,train_auc,test_accuracy,test_auc,training_time,do_tuning,timestamp,error
+no_embeddings_limited_data_all_features,LGBMClassifier,all_features,True,False,28.0,2296.0,895.0,0.6747,0.9005,0.5307,0.6805,53.89618372917175,True,2025-08-14T01:31:43.622031,

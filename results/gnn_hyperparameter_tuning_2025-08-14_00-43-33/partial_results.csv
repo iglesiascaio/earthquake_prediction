@@ -1,0 +1,7 @@
+config_id,model_type,scenario,hidden,n_layers,lr,batch_size,dropout,n_heads,train_accuracy,train_auc,test_accuracy,test_auc,best_val_loss,training_time,n_features,n_classes,n_train_samples,n_val_samples,timestamp
+baseline,StationGNN,no_embeddings_limited_data_top_features,16,3,0.001,16,0.1,,0.7212,0.6042,0.6268,0.5361,1.0771169341527498,38.88653755187988,8,5,222,52,2025-08-14T00:44:17.220135
+baseline,StationGNN,no_embeddings_limited_data_all_features,16,3,0.001,16,0.1,,0.7212,0.7216,0.6268,0.6563,1.0706901321044335,41.08308148384094,284,5,222,52,2025-08-14T00:45:03.496095
+baseline,StationGNN,embeddings_limited_data_top_features,16,3,0.001,16,0.1,,0.7303,0.7719,0.6448,0.6276,1.0661017436247606,56.83741331100464,264,5,222,52,2025-08-14T00:46:05.307318
+baseline,StationGNN,embeddings_limited_data_all_features,16,3,0.001,16,0.1,,0.7213,0.6835,0.6268,0.6114,1.0592043033012977,53.48340082168579,284,5,222,52,2025-08-14T00:47:03.780451
+config_01_GAT,StationGAT,no_embeddings_limited_data_top_features,32,2,0.001,32,0.1,4.0,0.7212,0.5549,0.6268,0.4703,1.0764017838698168,46.369316816329956,8,5,222,52,2025-08-14T00:47:54.590886
+config_01_GAT,StationGAT,no_embeddings_limited_data_all_features,32,2,0.001,32,0.1,4.0,0.7212,0.6326,0.6268,0.5636,1.0718586536554189,44.543986320495605,284,5,222,52,2025-08-14T00:48:44.339368
