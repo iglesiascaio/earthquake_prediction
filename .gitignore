@@ -19,7 +19,6 @@ __pycache__/
 
 # C extensions
 *.so
-*.pkl
 
 # Data files
 # *.parquet
@@ -30,9 +29,6 @@ __pycache__/
 *.pth
 # Output files from running on Supercloud
 *.out
-
-# Pickle files
-*.pkl
 
 # Distribution / packaging
 .Python
@@ -207,7 +203,6 @@ cython_debug/
 *.pth
 *.pt
 *.ckpt
-*.pkl
 *.npy
 *.npz
 *.h5
@@ -217,7 +212,6 @@ cython_debug/
 *.pth
 *.pt
 *.ckpt
-*.pkl
 *.npy
 *.npz
 *.h5
