@@ -407,14 +407,14 @@ sbatch seisLM_main.sh
 
 **Tabular Features (Seismological Features)**:
 ```bash
-# Features are already created from the data preparation step
-# Navigate to the modeling directory
+# Create features from pre-downloaded earthquake catalogs
 cd 02_Full_Model
+python src/data_prep/features/create_features.py
 ```
 
 **Feature Generation Workflow**:
 1. **Waveform Stream**: Process seismic waveforms → Generate SeisLM embeddings → Save to `03_Results/`
-2. **Tabular Stream**: Features already prepared from data preparation step → Ready for modeling
+2. **Tabular Stream**: Create features from existing catalogs → Engineer seismological features → Save to `data/features/`
 3. **Both streams run independently** and can be prepared in parallel
 
 #### **Step 2: Train Main Models (Combining Both Feature Streams)**
