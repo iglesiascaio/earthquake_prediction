@@ -239,11 +239,6 @@ earthquake-ai/
 - **`gnn_hyperparameter_tuning.py`**: Systematic evaluation of 25 different GNN configurations across 3 embedding scenarios (75 total experiments)
 - **`model_train.py`**: LightGBM hyperparameter tuning for gradient boosting models
 - **`matching_experiment.py`**: Legacy code for undersampling optimization experiments (older approach)
-
-#### **Exploration and Analysis Tools**
-- **`data_exploration.ipynb`**: Comprehensive data analysis and visualization
-- **`model_exploration.ipynb`**: Model architecture experimentation
-- **`next_steps.ipynb`**: Future development planning and roadmap
 - **Configuration Files**: YAML-based setup for data download and feature engineering
 
 ### 4. Multi-Modal Fusion
