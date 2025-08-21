@@ -282,12 +282,6 @@ sbatch src/data_prep/raw/download_data.sh
 - **`model_train.py`**: LightGBM hyperparameter tuning for gradient boosting models
 - **`matching_experiment.py`**: Legacy code for undersampling optimization experiments (older approach)
 
-#### **Exploration and Analysis Tools**
-- **`data_exploration.ipynb`**: Comprehensive data analysis and visualization
-- **`model_exploration.ipynb`**: Model architecture experimentation
-- **`next_steps.ipynb`**: Future development planning and roadmap
-- **Configuration Files**: YAML-based setup for data download and feature engineering
-
 ## 🚀 Quick Start
 
 ### 1. Environment Setup
