@@ -50,6 +50,13 @@ The system combines these approaches to enhance predictive robustness and accura
 └────────────────────────────────────────────────────────────────────────────-┘
 ```
 
+### **Parallel Feature Streams**
+
+The system operates with **two parallel feature streams** that are combined in the final modeling stage:
+
+1. **Waveform Features**: SeisLM embeddings from continuous seismic recordings
+2. **Tabular Features**: Engineered seismological features from earthquake catalogs
+
 ### **Training Approaches**
 
 The system supports three main training approaches for combining embeddings and tabular features:
@@ -57,6 +64,31 @@ The system supports three main training approaches for combining embeddings and 
 1. **Single GNN Experiment** (`gnn_experiment.py`): Test a specific GNN configuration
 2. **Systematic GNN Tuning** (`gnn_hyperparameter_tuning.py`): Evaluate 25 different GNN architectures across 3 embedding scenarios
 3. **LightGBM Tuning** (`model_train.py`): Optimize gradient boosting models for tabular features
+
+## 🔄 **Data Flow Architecture**
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           PARALLEL FEATURE STREAMS                          │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  Raw Waveforms (SCEDC) → Preprocessing → SeisLM Embeddings                 │
+│           │                                    │                           │
+│           │                                    │                           │
+│           └────────────────────────────────────┼───────────────────────────┘
+│                                                │                           │
+│  Earthquake Catalogs → Feature Engineering → Tabular Features              │
+│                                                │                           │
+│                                                ▼                           │
+│                                    ┌─────────────────────────────────────┐ │
+│                                    │      FEATURE FUSION & MODELING      │ │
+│                                    │                                     │ │
+│                                    │  GNN (GAT/SAGE) or LightGBM        │ │
+│                                    │                                     │ │
+│                                    │  → Final Magnitude Prediction       │ │
+│                                    └─────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
 
 ## 🎯 Research Objectives
 
@@ -166,13 +198,12 @@ earthquake-ai/
 
 ## 🔬 Key Components
 
-### 1. Seismic Waveform Processing (`01_Seismic_Wave_Data_Prediction/`)
+### 1. Waveform Feature Pipeline (`01_Seismic_Wave_Data_Prediction/`)
 
 #### **Data Sources**
 - **SCEDC**: Southern California Earthquake Data Center via AWS
 - **Coverage**: 25+ broadband stations, 3 components (BHZ, BHE, BHN)
 - **Format**: MiniSEED files with continuous recordings
-
 
 #### **Waveform Preprocessing Pipeline**
 - **`process_waveforms.ipynb`**: Main preprocessing workflow for all daily waveforms of stations
@@ -195,21 +226,13 @@ earthquake-ai/
 - **Baseline Results**: Establishes performance benchmark using only waveform embeddings
 - **Reusable Features**: Embeddings can be loaded for different downstream tasks
 
-
-
-### 2. Tabular Feature Engineering (`02_Full_Model/`)
+### 2. Tabular Feature Pipeline (`02_Full_Model/`)
 
 #### **Data Preparation Pipeline**
 - **`download_data.py`**: Automated earthquake catalog download from FDSN services
 - **`download_data.sh`**: SLURM-compatible download script for batch processing
 - **`create_features.py`**: Comprehensive feature engineering from raw catalogs
 - **Multi-station Support**: Handles 50+ stations with automated processing
-
-#### **Training Scripts for Tabular Features**
-- **`gnn_experiment.py`**: Single GNN experiment with specific configuration
-- **`gnn_hyperparameter_tuning.py`**: Systematic evaluation of 25 different GNN configurations across 3 embedding scenarios (75 total experiments)
-- **`model_train.py`**: LightGBM hyperparameter tuning for gradient boosting models
-- **`matching_experiment.py`**: Legacy code for undersampling optimization experiments (older approach)
 
 #### **Seismological Features**
 - **Basic Statistics**: Daily max/min/mean magnitude, event counts
@@ -227,21 +250,7 @@ earthquake-ai/
 - Temporal lag features for context
 ```
 
-### 3. Graph Neural Network Modeling (`02_Full_Model/src/model/`)
-
-#### **Architecture Variants**
-- **StationGNN**: GraphSAGE-based spatial modeling
-- **StationGAT**: Graph Attention Network with learned neighbor importance
-- **Spatial Context**: 100km radius for station connectivity
-
-#### **Training Scripts**
-- **`gnn_experiment.py`**: Single GNN experiment with specific configuration
-- **`gnn_hyperparameter_tuning.py`**: Systematic evaluation of 25 different GNN configurations across 3 embedding scenarios (75 total experiments)
-- **`model_train.py`**: LightGBM hyperparameter tuning for gradient boosting models
-- **`matching_experiment.py`**: Legacy code for undersampling optimization experiments (older approach)
-- **Configuration Files**: YAML-based setup for data download and feature engineering
-
-### 4. Multi-Modal Fusion
+### 3. Multi-Modal Fusion & Modeling (`02_Full_Model/src/model/`)
 
 #### **Feature Combination Strategies**
 1. **Waveform Only**: SeisLM embeddings + temporal aggregation
@@ -253,8 +262,20 @@ earthquake-ai/
 
 #### **Modeling Approaches**
 - **Gradient Boosting**: LightGBM for efficient tabular learning
-- **Graph Neural Networks**: Spatial-aware station modeling
+- **Graph Neural Networks**: Spatial-aware station modeling with GraphSAGE/GAT architectures
 - **Ensemble Methods**: Combining multiple approaches
+
+#### **Training Scripts**
+- **`gnn_experiment.py`**: Single GNN experiment with specific configuration
+- **`gnn_hyperparameter_tuning.py`**: Systematic evaluation of 25 different GNN configurations across 3 embedding scenarios (75 total experiments)
+- **`model_train.py`**: LightGBM hyperparameter tuning for gradient boosting models
+- **`matching_experiment.py`**: Legacy code for undersampling optimization experiments (older approach)
+
+#### **Exploration and Analysis Tools**
+- **`data_exploration.ipynb`**: Comprehensive data analysis and visualization
+- **`model_exploration.ipynb`**: Model architecture experimentation
+- **`next_steps.ipynb`**: Future development planning and roadmap
+- **Configuration Files**: YAML-based setup for data download and feature engineering
 
 ## 🚀 Quick Start
 
@@ -367,7 +388,9 @@ sbatch src/data_prep/raw/download_data.sh
 
 ### 4. Run Training
 
-#### **Step 1: Generate SeisLM Embeddings**
+#### **Step 1: Prepare Both Feature Streams (Parallel)**
+
+**Waveform Features (SeisLM Embeddings)**:
 ```bash
 # Generate embeddings from seismic waveforms
 cd 01_Seismic_Wave_Data_Prediction
@@ -377,13 +400,23 @@ python seisLM_main.py --mode train
 sbatch seisLM_main.sh
 ```
 
-**Embedding Generation Workflow**:
-1. **Processes seismic waveforms** using pre-trained SeisLM foundation model
-2. **Generates 256-dimensional embeddings** for each time window
-3. **Saves embeddings** in `03_Results/` folder for reuse
-4. **Optionally tests baseline performance** using embeddings alone for magnitude prediction
+**Tabular Features (Seismological Features)**:
+```bash
+# Download earthquake catalogs and create features
+cd 02_Full_Model
+python src/data_prep/raw/download_data.py
+python src/data_prep/features/create_features.py
 
-#### **Step 2: Train Main Models (Embeddings + Tabular Features)**
+# Or use SLURM scripts for large datasets
+sbatch src/data_prep/raw/download_data.sh
+```
+
+**Feature Preparation Workflow**:
+1. **Waveform Stream**: Process seismic waveforms → Generate SeisLM embeddings → Save to `03_Results/`
+2. **Tabular Stream**: Download earthquake catalogs → Engineer seismological features → Save to `data/features/`
+3. **Both streams run independently** and can be prepared in parallel
+
+#### **Step 2: Train Main Models (Combining Both Feature Streams)**
 ```bash
 # Navigate to the main modeling directory
 cd 02_Full_Model
