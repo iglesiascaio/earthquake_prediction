@@ -234,6 +234,17 @@ earthquake-ai/
 - **`create_features.py`**: Comprehensive feature engineering from raw catalogs
 - **Multi-station Support**: Handles 50+ stations with automated processing
 
+#### **Data Preparation Commands**
+```bash
+# Download earthquake catalogs and create features
+cd 02_Full_Model
+python src/data_prep/raw/download_data.py
+python src/data_prep/features/create_features.py
+
+# Or use SLURM scripts for large datasets
+sbatch src/data_prep/raw/download_data.sh
+```
+
 #### **Seismological Features**
 - **Basic Statistics**: Daily max/min/mean magnitude, event counts
 - **Energy Measures**: Gutenberg-Richter energy scaling
@@ -388,7 +399,7 @@ sbatch src/data_prep/raw/download_data.sh
 
 ### 4. Run Training
 
-#### **Step 1: Prepare Both Feature Streams (Parallel)**
+#### **Step 1: Generate Both Feature Streams (Parallel)**
 
 **Waveform Features (SeisLM Embeddings)**:
 ```bash
@@ -402,18 +413,14 @@ sbatch seisLM_main.sh
 
 **Tabular Features (Seismological Features)**:
 ```bash
-# Download earthquake catalogs and create features
+# Create features from pre-downloaded earthquake catalogs
 cd 02_Full_Model
-python src/data_prep/raw/download_data.py
 python src/data_prep/features/create_features.py
-
-# Or use SLURM scripts for large datasets
-sbatch src/data_prep/raw/download_data.sh
 ```
 
-**Feature Preparation Workflow**:
+**Feature Generation Workflow**:
 1. **Waveform Stream**: Process seismic waveforms → Generate SeisLM embeddings → Save to `03_Results/`
-2. **Tabular Stream**: Download earthquake catalogs → Engineer seismological features → Save to `data/features/`
+2. **Tabular Stream**: Create features from existing catalogs → Engineer seismological features → Save to `data/features/`
 3. **Both streams run independently** and can be prepared in parallel
 
 #### **Step 2: Train Main Models (Combining Both Feature Streams)**
