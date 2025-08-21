@@ -367,8 +367,9 @@ sbatch src/data_prep/raw/download_data.sh
 
 ### 4. Run Training
 
+#### **Step 1: Generate SeisLM Embeddings**
 ```bash
-# SeisLM + Toto pipeline
+# Generate embeddings from seismic waveforms
 cd 01_Seismic_Wave_Data_Prediction
 python seisLM_main.py --mode train
 
@@ -376,28 +377,36 @@ python seisLM_main.py --mode train
 sbatch seisLM_main.sh
 ```
 
-**Training Workflow**:
-1. **Generates embeddings** from seismic waveforms using SeisLM
-2. **Saves embeddings** in `03_Results/` folder for reuse
-3. **Evaluates baseline performance** using embeddings alone for magnitude prediction
-4. **Trains full model** with temporal aggregation (LSTM/Toto)
+**Embedding Generation Workflow**:
+1. **Processes seismic waveforms** using pre-trained SeisLM foundation model
+2. **Generates 256-dimensional embeddings** for each time window
+3. **Saves embeddings** in `03_Results/` folder for reuse
+4. **Optionally tests baseline performance** using embeddings alone for magnitude prediction
 
-**For Tabular Features + Embeddings**:
-- **Single GNN**: Test specific architecture with `gnn_experiment.py`
-- **Systematic Tuning**: Evaluate 25 GNN configurations with `gnn_hyperparameter_tuning.py`
-- **LightGBM Tuning**: Optimize gradient boosting with `model_train.py`
-
-# GNN hyperparameter tuning
+#### **Step 2: Train Main Models (Embeddings + Tabular Features)**
+```bash
+# Navigate to the main modeling directory
 cd 02_Full_Model
+
+# Choose your training approach:
+# Option A: Single GNN experiment
+sbatch gnn_experiment.sh
+
+# Option B: Systematic GNN hyperparameter tuning (75 experiments)
 sbatch gnn_hyperparameter_tuning.sh
 
-# Other training experiments
-sbatch gnn_experiment.sh           # Single GNN experiment
-sbatch model_train_experiment.sh   # LightGBM hyperparameter tuning
+# Option C: LightGBM hyperparameter tuning
+sbatch model_train_experiment.sh
 ```
 
+**Main Model Training**:
+- **Input**: SeisLM embeddings + engineered seismological features
+- **GNN Models**: Spatial-aware station modeling with GraphSAGE/GAT architectures
+- **LightGBM Models**: Gradient boosting for tabular feature learning
+- **Output**: Magnitude prediction using combined waveform + catalog information
+
 **HPC Integration**: All major experiments include SLURM job scripts for cluster execution:
-- **`seisLM_main.sh`**: Main SeisLM + Toto training pipeline
+- **`seisLM_main.sh`**: SeisLM embedding generation pipeline
 - **`gnn_hyperparameter_tuning.sh`**: 75-architecture systematic evaluation
 - **`gnn_experiment.sh`**: Single GNN architecture testing
 - **`model_train_experiment.sh`**: LightGBM hyperparameter tuning
@@ -405,10 +414,11 @@ sbatch model_train_experiment.sh   # LightGBM hyperparameter tuning
 ### 5. Evaluate Results
 
 ```bash
-# Model evaluation
+# Evaluate embedding generation
+cd 01_Seismic_Wave_Data_Prediction
 python seisLM_main.py --mode evaluate
 
-# View GNN results
+# View main model results
 cd 02_Full_Model/results
 python -c "import json; print(json.dumps(json.load(open('final_results.json')), indent=2))"
 ```
