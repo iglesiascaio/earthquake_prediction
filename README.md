@@ -385,7 +385,7 @@ print("🎉 All files downloaded and saved in structured folders.")
 # Download earthquake catalogs and create features
 cd 02_Full_Model
 python src/data_prep/raw/download_data.py
-python src/data_prep/features/create_features.py
+
 
 # Or use SLURM scripts for large datasets
 sbatch src/data_prep/raw/download_data.sh
@@ -451,18 +451,47 @@ sbatch model_train_experiment.sh
 # Evaluate embedding generation
 cd 01_Seismic_Wave_Data_Prediction
 python seisLM_main.py --mode evaluate
-
-# View main model results
-cd 02_Full_Model/results
-python -c "import json; print(json.dumps(json.load(open('final_results.json')), indent=2))"
 ```
+
+**Main Model Results**: All experiment results are automatically saved in timestamped directories within `02_Full_Model/results/`. Each experiment creates a unique folder with the timestamp when it was run, containing:
+- Model checkpoints and configurations
+- Training logs and metrics
+- Evaluation results and visualizations
+- Performance summaries and comparison tables
 
 ## 📊 Current Performance
 
-### **Preliminary Results** (Limited Data, Top Features)
-- **Baseline (No Embeddings)**: ROC-AUC: 0.5825, Accuracy: 0.6436
-- **With SeisLM Embeddings**: ROC-AUC: 0.6583 (+0.0758), Accuracy: 0.6277
-- **Best Performance**: Classes 3-4 (M 3.0-5.0) with AUC 0.77-0.74
+### **Preliminary Results**
+
+At this stage, results are exploratory and based on the best-performing configurations tested for both the GNN and LightGBM models, evaluated under different feature sets, data availability scenarios, and the inclusion or exclusion of learned embeddings. While embeddings do not always improve performance across all experimental configurations, in certain setups they yielded clear benefits.
+
+Here, the term **limited data** refers to restricting the evaluation to only those days and stations for which embedding vectors are available, ensuring a fair, like-for-like comparison between runs with and without embeddings.
+
+#### **GNN Results**
+For the **limited data, top features** scenario, the GNN baseline without embeddings achieved a ROC-AUC of **0.5825**. Adding learned embeddings improved ROC-AUC to **0.6583** (a gain of **+0.0758**). This suggests that embeddings can meaningfully enhance discrimination power even when only a small number of high-importance features are available.
+
+When using **limited data, all features**, the inclusion of embeddings yielded no improvement in ROC-AUC (**0.6409** vs. **0.6450**).
+
+| Scenario | ROC-AUC (test) |
+|----------|----------------|
+| `no_embeddings_limited_data_top_features` | 0.5825 |
+| `embeddings_limited_data_top_features` | 0.6583 |
+| `no_embeddings_limited_data_all_features` | 0.6409 |
+| `embeddings_limited_data_all_features` | 0.6450 |
+
+#### **LightGBM Results**
+For the same **limited data, top features** setup, LightGBM achieved higher ROC-AUC scores: **0.6563** without embeddings and **0.7285** with embeddings. 
+
+When using **limited data, all features**, embeddings again boosted ROC-AUC from **0.6805** to **0.7237**. In both feature regimes, LightGBM outperformed GNN in ROC-AUC, suggesting stronger discriminative capability under the same input conditions.
+
+| Scenario | ROC-AUC (test) |
+|----------|----------------|
+| `no_embeddings_limited_data_top_features` | 0.6563 |
+| `embeddings_limited_data_top_features` | 0.7285 |
+| `no_embeddings_limited_data_all_features` | 0.6805 |
+| `embeddings_limited_data_all_features` | 0.7237 |
+
+**Accuracy Note**: Accuracy values are not reported in the tables above because they depend heavily on the classification threshold applied to each class. In this work, we used default thresholds without class-specific calibration. For operational deployment, we recommend setting optimized thresholds per class—particularly for imbalanced datasets—to balance false positives and false negatives. Due to time constraints, this calibration step was not performed here.
 
 ### **Data Availability**
 - **Complete Coverage**: PASC, SDG, SYN stations (2020-2024)
