@@ -50,6 +50,14 @@ The system combines these approaches to enhance predictive robustness and accura
 └────────────────────────────────────────────────────────────────────────────-┘
 ```
 
+### **Training Approaches**
+
+The system supports three main training approaches for combining embeddings and tabular features:
+
+1. **Single GNN Experiment** (`gnn_experiment.py`): Test a specific GNN configuration
+2. **Systematic GNN Tuning** (`gnn_hyperparameter_tuning.py`): Evaluate 25 different GNN architectures across 3 embedding scenarios
+3. **LightGBM Tuning** (`model_train.py`): Optimize gradient boosting models for tabular features
+
 ## 🎯 Research Objectives
 
 - **Primary Goal**: Predict maximum earthquake magnitude in LA region within 30 days
@@ -112,10 +120,10 @@ earthquake-ai/
 ├── 🧠 02_Full_Model/                       # GNN-based spatial modeling
 │   ├── src/                                # Source code directory
 │   │   ├── model/                          # GNN model implementations
-│   │   │   ├── gnn_experiment.py           # Main GNN experiment
-│   │   │   ├── gnn_hyperparameter_tuning.py # 75-architecture tuning
-│   │   │   ├── matching_experiment.py      # Feature matching experiments
-│   │   │   ├── model_train.py              # GNN training utilities
+│   │   │   ├── gnn_experiment.py           # Single GNN experiment
+│   │   │   ├── gnn_hyperparameter_tuning.py # 75-architecture systematic tuning
+│   │   │   ├── model_train.py              # LightGBM hyperparameter tuning
+│   │   │   ├── matching_experiment.py      # Legacy undersampling optimization
 │   │   │   └── utils/                      # GNN utilities and helpers
 │   │   │       ├── __init__.py             # Utils package initialization
 │   │   │       ├── evaluation.py           # Evaluation utilities
@@ -197,6 +205,12 @@ earthquake-ai/
 - **`create_features.py`**: Comprehensive feature engineering from raw catalogs
 - **Multi-station Support**: Handles 50+ stations with automated processing
 
+#### **Training Scripts for Tabular Features**
+- **`gnn_experiment.py`**: Single GNN experiment with specific configuration
+- **`gnn_hyperparameter_tuning.py`**: Systematic evaluation of 25 different GNN configurations across 3 embedding scenarios (75 total experiments)
+- **`model_train.py`**: LightGBM hyperparameter tuning for gradient boosting models
+- **`matching_experiment.py`**: Legacy code for undersampling optimization experiments (older approach)
+
 #### **Seismological Features**
 - **Basic Statistics**: Daily max/min/mean magnitude, event counts
 - **Energy Measures**: Gutenberg-Richter energy scaling
@@ -220,10 +234,11 @@ earthquake-ai/
 - **StationGAT**: Graph Attention Network with learned neighbor importance
 - **Spatial Context**: 100km radius for station connectivity
 
-#### **Hyperparameter Tuning**
-- **25 Model Configurations**: Hidden sizes, layers, attention heads
-- **3 Embedding Scenarios**: Feature availability optimization
-- **75 Total Experiments**: Systematic architecture evaluation
+#### **Training Scripts**
+- **`gnn_experiment.py`**: Single GNN experiment with specific configuration
+- **`gnn_hyperparameter_tuning.py`**: Systematic evaluation of 25 different GNN configurations across 3 embedding scenarios (75 total experiments)
+- **`model_train.py`**: LightGBM hyperparameter tuning for gradient boosting models
+- **`matching_experiment.py`**: Legacy code for undersampling optimization experiments (older approach)
 
 #### **Exploration and Analysis Tools**
 - **`data_exploration.ipynb`**: Comprehensive data analysis and visualization
@@ -372,22 +387,25 @@ sbatch seisLM_main.sh
 3. **Evaluates baseline performance** using embeddings alone for magnitude prediction
 4. **Trains full model** with temporal aggregation (LSTM/Toto)
 
+**For Tabular Features + Embeddings**:
+- **Single GNN**: Test specific architecture with `gnn_experiment.py`
+- **Systematic Tuning**: Evaluate 25 GNN configurations with `gnn_hyperparameter_tuning.py`
+- **LightGBM Tuning**: Optimize gradient boosting with `model_train.py`
+
 # GNN hyperparameter tuning
 cd 02_Full_Model
 sbatch gnn_hyperparameter_tuning.sh
 
-# Other GNN experiments
+# Other training experiments
 sbatch gnn_experiment.sh           # Single GNN experiment
-sbatch model_train_experiment.sh   # Model training experiment
-sbatch matching_experiment.sh      # Feature matching experiment
+sbatch model_train_experiment.sh   # LightGBM hyperparameter tuning
 ```
 
 **HPC Integration**: All major experiments include SLURM job scripts for cluster execution:
 - **`seisLM_main.sh`**: Main SeisLM + Toto training pipeline
 - **`gnn_hyperparameter_tuning.sh`**: 75-architecture systematic evaluation
 - **`gnn_experiment.sh`**: Single GNN architecture testing
-- **`model_train_experiment.sh`**: Model training experiments
-- **`matching_experiment.sh`**: Feature matching and comparison studies
+- **`model_train_experiment.sh`**: LightGBM hyperparameter tuning
 
 ### 5. Evaluate Results
 
